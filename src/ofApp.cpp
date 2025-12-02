@@ -87,33 +87,35 @@ void ofApp::update() {
 	}
 	
 	//movement
+	rotForce = 0.0;
 	if (bLanderLoaded && leftKeyDown) {
-		rotForce = 30;
+		rotForce += 30;
 	}
 	if (bLanderLoaded && rightKeyDown) {
-		rotForce = -30;
+		rotForce -= 30;
 	}
+	integrateRot();
 	
 
-	float d = glm::radians(hmary.getRotationAngle(0));
-	glm::vec3 heading = glm::normalize(glm::vec3(sin(d), 0, -cos(d)));
+	float d = glm::radians(rotation);
+	glm::vec3 heading = glm::normalize(glm::vec3(-sin(d), 0, -cos(d)));
 	cout << "Heading in update angle: " << heading << endl;
 
 	if (bLanderLoaded && wKeyDown) {
-		force = heading * 5;
+		force += heading * 5;
 	}
 	if (bLanderLoaded && sKeyDown) {
-		force = heading * -5;
+		force += heading * -5;
 	}
 	if (bLanderLoaded && dKeyDown) {
-		force = glm::vec3(heading.z, 0, heading.x) * 5;
+		force += glm::vec3(heading.z, 0, heading.x) * 5;
 	}
 	if (bLanderLoaded && aKeyDown) {
-		force = glm::vec3(heading.z, 0, heading.x) * -5;
+		force += glm::vec3(heading.z, 0, heading.x) * -5;
 	}
 
 	integrateMove();
-	integrateRot();
+
 }
 
 //--------------------------------------------------------------
@@ -633,28 +635,27 @@ void ofApp::integrateMove() {
 }
 
 void ofApp::integrateRot() {
-	float framerate = ofGetFrameRate();
-	if (framerate != 0) {
-		float dt = 1.0f / framerate;
 
-		float rotAcc = 0.0f;
-		if (rotForce != 0.0f) {
-			rotAcc = rotForce / mass;
+	float fr = ofGetFrameRate();
+		if (fr != 0) {
+			float dt = 1.0f / fr;
+
+			rotation += rotVel * dt;
+
+			float accel = rotAcc;
+			if (rotForce != 0.0f) {
+				accel += (rotForce / mass);
+			}
+
+			rotVel += accel * dt;
+			rotVel *= damping;
+
+			hmary.setRotation(0, rotation, 0, 1, 0);
 		}
 
-		rotVel += rotAcc * dt;
-		rotVel *= damping;
-
-		float rot = hmary.getRotationAngle(0) + rotVel * dt;
-
-		rot = fmod(rot, 360.0f);
-		if (rot < 0) rot += 360.0f;
-
-		hmary.setRotation(0, rot, 0, 1, 0);
-		cout << "Integrate Rot angle: " << hmary.getRotationAngle(0) << endl;
-	}
-
-	rotForce = 0.0f;
+		rotForce = 0.0f;
 }
+	
+
 
 
