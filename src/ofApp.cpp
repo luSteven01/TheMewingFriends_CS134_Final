@@ -2,8 +2,6 @@
 //--------------------------------------------------------------
 //
 //  Kevin M. Smith
-// 
-//
 //  Student Name:   Alex Lim and Steven Lu
 //  Date: 21/1/2025
 
@@ -27,7 +25,8 @@ void ofApp::setup(){
 	bCtrlKeyDown = false;
 	bLanderLoaded = false;
 	bTerrainSelected = true;
-//	ofSetWindowShape(1024, 768);
+	showAltitude = true;
+	//	ofSetWindowShape(1024, 768);
 	cam.setDistance(10);
 	cam.setNearClip(.1);
 	cam.setFov(65.5);   // approx equivalent to 28mm in 35mm format
@@ -35,6 +34,8 @@ void ofApp::setup(){
 	cam.disableMouseInput();
 	ofEnableSmoothing();
 	ofEnableDepthTest();
+
+	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
 	
 	// create sliders for testing
 	//
@@ -93,11 +94,10 @@ void ofApp::update() {
 	if (bLanderLoaded && rightKeyDown) {
 		rotForce = -30;
 	}
-	
 
 	float d = glm::radians(hmary.getRotationAngle(0));
 	glm::vec3 heading = glm::normalize(glm::vec3(sin(d), 0, -cos(d)));
-	cout << "Heading in update angle: " << heading << endl;
+	//cout << "Heading in update angle: " << heading << endl;
 
 	if (bLanderLoaded && wKeyDown) {
 		force = heading * 5;
@@ -111,6 +111,12 @@ void ofApp::update() {
 	if (bLanderLoaded && aKeyDown) {
 		force = glm::vec3(heading.z, 0, heading.x) * -5;
 	}
+	if (bLanderLoaded && spaceKeyDown) {
+		force = glm::vec3(0, 1, 0) * 5;
+	}
+	if (bLanderLoaded && shiftKeyDown) {
+		force = glm::vec3(0, 1, 0) * -5;
+	}
 
 	integrateMove();
 	integrateRot();
@@ -121,8 +127,12 @@ void ofApp::draw() {
 	ofNoFill();
 	ofDisableDepthTest();
 	background.draw(0, 0, ofGetWidth(), ofGetHeight());
+
 	glDepthMask(false);
 	if (!bHide) gui.draw();
+	if (showAltitude && bLanderLoaded) {
+		guiFont.drawString("Altitude: " + ofToString(rayFindAlt()), (ofGetWidth() / 2) - 150, 120);
+	}
 	glDepthMask(true);
 
 	ofEnableDepthTest();
@@ -651,10 +661,26 @@ void ofApp::integrateRot() {
 		if (rot < 0) rot += 360.0f;
 
 		hmary.setRotation(0, rot, 0, 1, 0);
-		cout << "Integrate Rot angle: " << hmary.getRotationAngle(0) << endl;
+		//cout << "Integrate Rot angle: " << hmary.getRotationAngle(0) << endl;
 	}
 
 	rotForce = 0.0f;
+}
+
+float ofApp::rayFindAlt() {
+	ofVec3f origin = hmary.getPosition();
+
+	Ray ray(Vector3(origin.x, origin.y, origin.z), Vector3(0, -1, 0));
+
+	TreeNode groundNode;
+
+	if (octree.intersect(ray, octree.root, groundNode)) {
+		int i = groundNode.points[0]; // index
+		ofVec3f groundPoint = octree.mesh.getVertex(i); // actual mesh vertex position
+		return origin.y - groundPoint.y; // height difference
+	}
+
+	return 0; // or some safe default if no hit
 }
 
 
