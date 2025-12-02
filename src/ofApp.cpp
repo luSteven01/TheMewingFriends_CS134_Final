@@ -137,13 +137,6 @@ void ofApp::draw() {
 	ofDisableDepthTest();
 	background.draw(0, 0, ofGetWidth(), ofGetHeight());
 
-	glDepthMask(false);
-	if (!bHide) gui.draw();
-	if (showAltitude && bLanderLoaded) {
-		guiFont.drawString("Altitude: " + ofToString(rayFindAlt()), (ofGetWidth() / 2) - 150, 120);
-	}
-	glDepthMask(true);
-
 	ofEnableDepthTest();
 	cam.begin();
 	ofPushMatrix();
@@ -199,6 +192,13 @@ void ofApp::draw() {
 
 	ofPopMatrix();
 	cam.end();
+
+	glDepthMask(false);
+	if (!bHide) gui.draw();
+	if (showAltitude && bLanderLoaded) {
+		guiFont.drawString("Altitude: " + ofToString(rayFindAlt()), (ofGetWidth() / 2) - 150, 120);
+	}
+	glDepthMask(true);
 }
 
 
