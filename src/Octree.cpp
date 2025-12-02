@@ -203,18 +203,24 @@ bool Octree::intersect(const Ray & ray, const TreeNode & node, TreeNode & nodeRt
 }
 
 bool Octree::intersect(const Box &box, TreeNode & node, vector<Box> & boxListRtn) {
-	if (!node.box.overlap(box)) {
-		return false;
-	}
+// if box overlaps the node's box, then do the following logic
+	bool isIntersected = false;
+	if (node.box.overlap(box)) { 
+		// add the leaf node to the box list and return true
+		if(node.children.empty()) {
+			boxListRtn.push_back(node.box);
+			return true;
+		}
 
-	if (node.children.size() == 0) {
-		boxListRtn.push_back(node.box);
-		return true;
-	}
+		// if there are children, iterate through all children that are intersected
 
-	for (int i = 0; i < node.children.size(); i++) {
-		intersect(box, node.children[i], boxListRtn);
+		for (int i = 0; i < node.children.size(); i++) {
+			if (intersect(box, node.children[i], boxListRtn)){
+				isIntersected = true;
+			}
+		}
 	}
+	return isIntersected;
 }
 
 void Octree::draw(TreeNode & node, int numLevels, int level) {

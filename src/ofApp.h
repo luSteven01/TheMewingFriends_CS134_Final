@@ -43,9 +43,11 @@ class ofApp : public ofBaseApp{
 		glm::vec3 force = glm::vec3(0, 0, 0);
 		float damping = 0.99;
 		float mass = 1.0;
+		float rotation = 0.0;
 		float rotVel = 0;
 		float rotAcc = 0;
 		float rotForce = 0;
+
 
 		ofEasyCam cam;
 		ofxAssimpModelLoader terrain, hmary;
@@ -61,14 +63,6 @@ class ofApp : public ofBaseApp{
 		bool leftKeyDown;
 		bool rightKeyDown;
 		bool showAltitude;
-
-
-
-
-
-
-
-
 
 		ofLight light;
 		Box boundingBox, landerBounds;
