@@ -5,6 +5,9 @@
 #include  "ofxAssimpModelLoader.h"
 #include "Octree.h"
 #include "glm/gtx/intersect.hpp"
+#include "Particle.h"
+#include "ParticleEmitter.h"
+#include "ParticleSystem.h"
 
 
 
@@ -103,4 +106,9 @@ class ofApp : public ofBaseApp{
 		vector<Box> bboxList;
 
 		const float selectionRange = 4.0;
+
+		ParticleEmitter exhaustEmitter;
+		TurbulenceForce* exhaustTurbulence = nullptr;
+
+
 };

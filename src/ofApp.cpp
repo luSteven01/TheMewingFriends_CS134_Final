@@ -73,6 +73,15 @@ void ofApp::setup(){
 	
 	cout << "Number of Verts: " << terrain.getMesh(0).getNumVertices() << endl;
 
+	exhaustEmitter.setEmitterType(RadialEmitter);
+	exhaustEmitter.setLifespan(0.1);
+	exhaustEmitter.setParticleRadius(0.6);
+	exhaustEmitter.setRate(0);
+	exhaustEmitter.start();
+
+	exhaustTurbulence = new TurbulenceForce(ofVec3f(-100, -100, -100), ofVec3f( 100,  100,  100));
+	exhaustEmitter.sys->addForce(exhaustTurbulence);
+
 }
  
 //--------------------------------------------------------------
@@ -96,10 +105,10 @@ void ofApp::update() {
 	
 	//movement
 	rotForce = 0.0;
-	if (bLanderLoaded && leftKeyDown) {
+	if (leftKeyDown) {
 		rotForce += 30;
 	}
-	if (bLanderLoaded && rightKeyDown) {
+	if (rightKeyDown) {
 		rotForce -= 30;
 	}
 	integrateRot();
@@ -109,16 +118,16 @@ void ofApp::update() {
 	glm::vec3 heading = glm::normalize(glm::vec3(-sin(d), 0, -cos(d)));
 	cout << "Heading in update angle: " << heading << endl;
 
-	if (bLanderLoaded && wKeyDown) {
+	if ( wKeyDown) {
 		force += heading * 5;
 	}
-	if (bLanderLoaded && sKeyDown) {
+	if ( sKeyDown) {
 		force += heading * -5;
 	}
-	if (bLanderLoaded && dKeyDown) {
+	if ( dKeyDown) {
 		force += glm::vec3(heading.z, 0, heading.x) * 5;
 	}
-	if (bLanderLoaded && aKeyDown) {
+	if ( aKeyDown) {
 		force += glm::vec3(heading.z, 0, heading.x) * -5;
 	}
 	if (bLanderLoaded && spaceKeyDown) {
@@ -132,6 +141,56 @@ void ofApp::update() {
 	}
 	if (bLanderLoaded && shiftKeyDown) {
 		force = glm::vec3(0, 1, 0) * -5;
+	}
+
+	if (bLanderLoaded) {
+        glm::vec3 landerPos = hmary.getPosition();
+
+        bool hasThrust = false;
+        glm::vec3 exhaustDir(0, 0, 0);
+
+        if (wKeyDown) {
+            hasThrust = true;
+            exhaustDir += -heading;
+        }
+        if (sKeyDown) {
+            hasThrust = true;
+            exhaustDir += heading;
+        }
+        if (dKeyDown) {
+            hasThrust = true;
+            glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
+            exhaustDir += -right;
+        }
+        if (aKeyDown) {
+            hasThrust = true;
+            glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
+            exhaustDir += right;
+        }
+
+        if (hasThrust && exhaustDir != glm::vec3(0, 0, 0)) {
+            exhaustDir = glm::normalize(exhaustDir);
+
+            float exhaustSpeed  = 20.0f;
+            float exhaustOffset = 0.5f;
+
+            ofVec3f emitterPos(landerPos.x, landerPos.y, landerPos.z);
+            ofVec3f offset(exhaustDir.x * exhaustOffset,
+                           exhaustDir.y * exhaustOffset,
+                           exhaustDir.z * exhaustOffset);
+
+            exhaustEmitter.setPosition(emitterPos + offset);
+
+            exhaustEmitter.setVelocity(ofVec3f(exhaustDir.x * exhaustSpeed,
+                                                exhaustDir.y * exhaustSpeed,
+                                                exhaustDir.z * exhaustSpeed));
+
+            exhaustEmitter.setRate(80.0f);
+        } else {
+            exhaustEmitter.setRate(0.0f);
+        }
+
+        exhaustEmitter.update();
 	}
 
 	integrateMove();
@@ -152,6 +211,9 @@ void ofApp::draw() {
 	terrain.drawFaces();
 	if (bLanderLoaded) {
 		hmary.drawFaces();
+
+		exhaustEmitter.draw();
+
 		if (!bTerrainSelected) drawAxis(hmary.getPosition());
 		if (bDisplayBBoxes) {
 			ofNoFill();
