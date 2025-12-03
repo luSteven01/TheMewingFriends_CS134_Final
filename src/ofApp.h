@@ -48,11 +48,16 @@ class ofApp : public ofBaseApp{
 		float rotAcc = 0;
 		float rotForce = 0;
 
-
+		//Camera
 		ofEasyCam cam;
+		ofCamera * theCam = NULL;
+		ofEasyCam defaultCam;
+		ofCamera onboardCam, trackingCam;
+
 		ofxAssimpModelLoader terrain, hmary;
 		ofTrueTypeFont guiFont;
 		ofImage background;
+
 
 		bool wKeyDown;
 		bool aKeyDown;

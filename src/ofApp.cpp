@@ -26,14 +26,21 @@ void ofApp::setup(){
 	bLanderLoaded = false;
 	bTerrainSelected = true;
 	showAltitude = true;
-	//	ofSetWindowShape(1024, 768);
-	cam.setDistance(10);
-	cam.setNearClip(.1);
-	cam.setFov(65.5);   // approx equivalent to 28mm in 35mm format
+
+	//Camera set up
+	//cam.setDistance(10);
+	//cam.setNearClip(.1);
+	//cam.setFov(65.5);   // approx equivalent to 28mm in 35mm format
+	//cam.disableMouseInput();
+
 	ofSetVerticalSync(true);
-	cam.disableMouseInput();
 	ofEnableSmoothing();
 	ofEnableDepthTest();
+	onboardCam = ofCamera();
+	trackingCam = ofCamera();
+	trackingCam.setPosition(-180, 57, 170);
+	theCam = &defaultCam;
+
 
 	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
 	
@@ -256,7 +263,15 @@ void ofApp::keyPressed(int key) {
 	case OF_KEY_LEFT:
 		leftKeyDown = true;
 		break;
-
+	case '1':
+		theCam = &defaultCam;
+		break;
+	case '2':
+		theCam = &onboardCam;
+		break;
+	case '3':
+		theCam = &trackingCam;
+		break;
 	case 'B':
 	case 'b':
 		bDisplayBBoxes = !bDisplayBBoxes;
