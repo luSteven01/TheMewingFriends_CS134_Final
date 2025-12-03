@@ -56,6 +56,10 @@ class ofApp : public ofBaseApp{
 		ofCamera * theCam = NULL;
 		ofCamera onboardCam, trackingCam;
 
+		//lights
+		ofLight keyLight, fillLight, ravineLight;
+
+		//art assets
 		ofxAssimpModelLoader terrain, hmary;
 		ofTrueTypeFont guiFont;
 		ofImage background;

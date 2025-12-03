@@ -27,12 +27,6 @@ void ofApp::setup(){
 	bTerrainSelected = true;
 	showAltitude = true;
 
-	//Camera set up
-	//cam.setDistance(10);
-	//cam.setNearClip(.1);
-	//cam.setFov(65.5);   // approx equivalent to 28mm in 35mm format
-	//cam.disableMouseInput();
-
 	ofSetVerticalSync(true);
 	ofEnableSmoothing();
 	ofEnableDepthTest();
@@ -40,7 +34,6 @@ void ofApp::setup(){
 	trackingCam = ofCamera();
 	trackingCam.setPosition(-180, 80, 180);
 	theCam = &cam;
-
 
 	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
 	
@@ -53,7 +46,30 @@ void ofApp::setup(){
 
 	// setup rudimentary lighting 
 	//
-	initLightingAndMaterials();
+	//initLightingAndMaterials();
+	keyLight.setup();
+	keyLight.setAmbientColor(ofFloatColor(200, 0, 150));
+	keyLight.setDiffuseColor(ofFloatColor(200, 0, 150));
+	keyLight.setSpecularColor(ofFloatColor(200, 0, 150));
+	keyLight.setSpotlight();
+	keyLight.setSpotlightCutOff(5);
+	keyLight.setOrientation(glm::vec3(-90, 0, 0));
+	keyLight.enable();
+
+	fillLight.setup();
+	fillLight.setPointLight();
+	fillLight.setPosition(-180, 300, 180);
+	fillLight.enable();
+
+	//ravineLight.setup();
+	//ravineLight.setSpecularColor(ofFloatColor(200, 0, 0));
+	//ravineLight.setDiffuseColor(ofFloatColor(200, 0, 0));
+	//ravineLight.setAmbientColor(ofFloatColor(200, 0, 0));
+	//ravineLight.setAttenuation();
+	//ravineLight.setAreaLight(500, 10);
+	//ravineLight.setPosition(338, -300, 90);
+	//ravineLight.setOrientation(glm::vec3(90, 0, 0));
+	//ravineLight.enable();
 
 	terrain.loadModel("geo/peak_terrain.obj");
 	terrain.setScaleNormalization(false);
@@ -118,6 +134,7 @@ void ofApp::update() {
 		glm::vec3 landerPos = hmary.getPosition();
 		trackingCam.lookAt(landerPos);
 		onboardCam.setPosition(landerPos);
+		keyLight.setPosition(landerPos);
 
 		bool hasThrust = false;
 		glm::vec3 exhaustDir(0, 0, 0);
