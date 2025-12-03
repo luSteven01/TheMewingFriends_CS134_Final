@@ -54,7 +54,6 @@ class ofApp : public ofBaseApp{
 		//Camera
 		ofEasyCam cam;
 		ofCamera * theCam = NULL;
-		ofEasyCam defaultCam;
 		ofCamera onboardCam, trackingCam;
 
 		ofxAssimpModelLoader terrain, hmary;

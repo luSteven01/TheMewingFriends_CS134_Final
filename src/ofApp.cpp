@@ -38,8 +38,8 @@ void ofApp::setup(){
 	ofEnableDepthTest();
 	onboardCam = ofCamera();
 	trackingCam = ofCamera();
-	trackingCam.setPosition(-180, 57, 170);
-	theCam = &defaultCam;
+	trackingCam.setPosition(-180, 80, 180);
+	theCam = &cam;
 
 
 	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
@@ -55,7 +55,7 @@ void ofApp::setup(){
 	//
 	initLightingAndMaterials();
 
-	terrain.loadModel("geo/cs134_terrain_noshading.obj");
+	terrain.loadModel("geo/peak_terrain.obj");
 	terrain.setScaleNormalization(false);
 
 	if (background.load("images/space.jpg")) {
@@ -88,7 +88,6 @@ void ofApp::setup(){
 // incrementally update scene (animation)
 //
 void ofApp::update() {
-
 	//Show boxes lander collides with and move lander up when u is pressed
 	if ((colBoxList.size() >= 10) && uClicked) {
 		hmary.setPosition(hmary.getPosition().x, hmary.getPosition().y + 0.1, hmary.getPosition().z);
@@ -104,69 +103,60 @@ void ofApp::update() {
 	}
 	
 	//movement
-	rotForce = 0.0;
-	if (leftKeyDown) {
-		rotForce += 30;
-	}
-	if (rightKeyDown) {
-		rotForce -= 30;
-	}
-	integrateRot();
 	
 
-	float d = glm::radians(rotation);
-	glm::vec3 heading = glm::normalize(glm::vec3(-sin(d), 0, -cos(d)));
-	cout << "Heading in update angle: " << heading << endl;
-
-	if ( wKeyDown) {
-		force += heading * 5;
-	}
-	if ( sKeyDown) {
-		force += heading * -5;
-	}
-	if ( dKeyDown) {
-		force += glm::vec3(heading.z, 0, heading.x) * 5;
-	}
-	if ( aKeyDown) {
-		force += glm::vec3(heading.z, 0, heading.x) * -5;
-	}
-	if (bLanderLoaded && spaceKeyDown) {
-		force = glm::vec3(0, 1, 0) * 5;
-	}
-	if (bLanderLoaded && shiftKeyDown) {
-		force = glm::vec3(0, 1, 0) * -5;
-	}
-	if (bLanderLoaded && spaceKeyDown) {
-		force = glm::vec3(0, 1, 0) * 5;
-	}
-	if (bLanderLoaded && shiftKeyDown) {
-		force = glm::vec3(0, 1, 0) * -5;
-	}
-
 	if (bLanderLoaded) {
-        glm::vec3 landerPos = hmary.getPosition();
+		rotForce = 0.0;
+		if (leftKeyDown) {
+			rotForce += 30;
+		}
+		if (rightKeyDown) {
+			rotForce -= 30;
+		}
+		integrateRot();
+		
+		glm::vec3 landerPos = hmary.getPosition();
+		trackingCam.lookAt(landerPos);
+		onboardCam.setPosition(landerPos);
 
-        bool hasThrust = false;
-        glm::vec3 exhaustDir(0, 0, 0);
+		bool hasThrust = false;
+		glm::vec3 exhaustDir(0, 0, 0);
+		
+		float d = glm::radians(rotation);
+		glm::vec3 heading = glm::normalize(glm::vec3(-sin(d), 0, -cos(d)));
+		//cout << "Heading in update angle: " << heading << endl;
 
-        if (wKeyDown) {
-            hasThrust = true;
-            exhaustDir += -heading;
-        }
-        if (sKeyDown) {
-            hasThrust = true;
-            exhaustDir += heading;
-        }
-        if (dKeyDown) {
-            hasThrust = true;
-            glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
-            exhaustDir += -right;
-        }
-        if (aKeyDown) {
-            hasThrust = true;
-            glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
-            exhaustDir += right;
-        }
+		if (wKeyDown) {
+			force += heading * 5;
+			hasThrust = true;
+			exhaustDir += -heading;
+		}
+		if (sKeyDown) {
+			force += heading * -5;
+			hasThrust = true;
+			exhaustDir += heading;
+		}
+		if (dKeyDown) {
+			force += glm::vec3(heading.z, 0, heading.x) * 5;
+			hasThrust = true;
+			glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
+			exhaustDir += -right;
+		}
+		if (aKeyDown) {
+			force += glm::vec3(heading.z, 0, heading.x) * -5;
+			hasThrust = true;
+			glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
+			exhaustDir += right;
+		}
+		if (spaceKeyDown) {
+			force = glm::vec3(0, 1, 0) * 5;
+			hasThrust = true;
+			glm::vec3 up = glm::vec3(0, 1, 0);
+			exhaustDir += -up;
+		}
+		if (shiftKeyDown) {
+			force = glm::vec3(0, 1, 0) * -5;
+		}
 
         if (hasThrust && exhaustDir != glm::vec3(0, 0, 0)) {
             exhaustDir = glm::normalize(exhaustDir);
@@ -204,7 +194,7 @@ void ofApp::draw() {
 	background.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	ofEnableDepthTest();
-	cam.begin();
+	theCam->begin();
 	ofPushMatrix();
 
 	ofEnableLighting();              // shaded mode
@@ -260,7 +250,7 @@ void ofApp::draw() {
 	}
 
 	ofPopMatrix();
-	cam.end();
+	theCam->end();
 
 	glDepthMask(false);
 	if (!bHide) gui.draw();
@@ -326,7 +316,7 @@ void ofApp::keyPressed(int key) {
 		leftKeyDown = true;
 		break;
 	case '1':
-		theCam = &defaultCam;
+		theCam = &cam;
 		break;
 	case '2':
 		theCam = &onboardCam;
@@ -644,8 +634,6 @@ void ofApp::dragEvent(ofDragInfo dragInfo) {
 		for (int i = 0; i < hmary.getMeshCount(); i++) {
 			bboxList.push_back(Octree::meshBounds(hmary.getMesh(i)));
 		}
-
-		//		hmary.setRotation(1, 180, 1, 0, 0);
 
 				// We want to drag and drop a 3D object in space so that the model appears 
 				// under the mouse pointer where you drop it !

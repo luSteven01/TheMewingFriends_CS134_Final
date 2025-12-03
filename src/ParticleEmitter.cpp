@@ -49,7 +49,7 @@ void ParticleEmitter::draw() {
 			break;
 		case SphereEmitter:
 		case RadialEmitter:
-			ofDrawSphere(position, radius/10);  // just draw a small sphere as a placeholder
+			//ofDrawSphere(position, radius/10);  // just draw a small sphere as a placeholder
 			break;
 		default:
 			break;
