@@ -17,7 +17,6 @@ class ofApp : public ofBaseApp{
 		void setup();
 		void update();
 		void draw();
-
 		void keyPressed(int key);
 		void keyReleased(int key);
 		void mouseMoved(int x, int y );
@@ -58,13 +57,17 @@ class ofApp : public ofBaseApp{
 		ofCamera onboardCam, trackingCam, thirdPerCam;
 
 		//lights
-		ofLight keyLight, fillLight, ravineLight;
+		ofLight keyLight, fillLight;
+		ofLight light; //Starter code. Maybe remove later
 
 		//art assets
 		ofxAssimpModelLoader terrain, hmary;
+		bool bLanderLoaded;
+		bool bTerrainSelected;
 		ofTrueTypeFont guiFont;
 		ofImage background;
 
+		//controls
 		bool wKeyDown;
 		bool aKeyDown;
 		bool sKeyDown;
@@ -74,42 +77,28 @@ class ofApp : public ofBaseApp{
 		bool leftKeyDown;
 		bool rightKeyDown;
 		bool showAltitude;
-
-		ofLight light;
-		Box boundingBox, landerBounds;
-		Box testBox;
-		vector<Box> colBoxList;
-		bool bLanderSelected = false;
-		Octree octree;
-		TreeNode selectedNode;
+		bool bAltKeyDown;
 		glm::vec3 mouseDownPos, mouseLastPos;
+
+		bool bLanderSelected = false;
 		bool bInDrag = false;
 
-		ofxIntSlider numLevels;
+		//GUI
 		ofxPanel gui;
-		ofxToggle timingInfo;
-		ofTime timer;
-
-		bool bAltKeyDown;
-		bool bCtrlKeyDown;
-		bool bPointSelected;
+		ofxIntSlider numLevels;
 		bool bHide;
+
+		//Spatial Subdivision
+		Octree octree;
+		TreeNode selectedNode;
+		Box boundingBox, landerBounds;
+		vector<Box> colBoxList;
+		vector<Box> bboxList;
 		bool pointSelected = false;
 		bool bDisplayLeafNodes = false;
 		bool bDisplayOctree = false;
-		bool bDisplayBBoxes = false;
-		bool uClicked = false;
-		
-		bool bLanderLoaded;
-		bool bTerrainSelected;
-	
-		ofVec3f selectedPoint;
-		ofVec3f intersectPoint;
 
-		vector<Box> bboxList;
-
-		const float selectionRange = 4.0;
-
+		//Particles
 		ParticleEmitter exhaustEmitter;
 		TurbulenceForce* exhaustTurbulence = nullptr;
 

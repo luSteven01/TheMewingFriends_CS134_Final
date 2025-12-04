@@ -13,17 +13,31 @@
 // setup scene, lighting, state and load geometry
 //
 void ofApp::setup(){
+	//Set up models
 	hmary.setScaleNormalization(false);
 	if (hmary.load("geo/SeamothForGame.obj")) {
 		bLanderLoaded = true;
-		cout << "lander loaded" << endl;
 		hmary.setPosition(-300, 470, -550);
+		cout << "lander loaded" << endl;
 	}
 	else {
 		bLanderLoaded = false;
 		cout << "could not load lander" << endl;
 	}
 
+	terrain.setScaleNormalization(false);
+	terrain.loadModel("geo/peak_terrain.obj");
+
+	//Fonts and Art
+	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
+
+	if (background.load("images/space.jpg")) {
+		cout << "Background loaded" << endl;
+	} else {
+		cout << "Can't open background image file" << endl;
+	}
+
+	//initialize controls
 	wKeyDown = false;
 	aKeyDown = false;
 	sKeyDown = false;
@@ -33,30 +47,25 @@ void ofApp::setup(){
 	leftKeyDown = false;
 	rightKeyDown = false;
 	bAltKeyDown = false;
-	bCtrlKeyDown = false;
-	bTerrainSelected = true;
 	showAltitude = true;
+	bTerrainSelected = true;
 
+	// create sliders for testing
+	gui.setup();
+	gui.add(numLevels.setup("Number of Octree Levels", 1, 1, 10));
+	bHide = false;
+
+	//Cameras
 	ofSetVerticalSync(true);
 	ofEnableSmoothing();
 	ofEnableDepthTest();
 	onboardCam = ofCamera();
 	trackingCam = ofCamera();
-	trackingCam.setPosition(-180, 80, 180);
 	thirdPerCam = ofCamera();
+	trackingCam.setPosition(-180, 80, 180);
 	theCam = &thirdPerCam;
 
-	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
-	
-	// create sliders for testing
-	//
-	gui.setup();
-	gui.add(numLevels.setup("Number of Octree Levels", 1, 1, 10));
-	bHide = false;
-	gui.add(timingInfo.setup("Timing Info", false));
-
 	// setup rudimentary lighting 
-	//
 	//initLightingAndMaterials();
 	//keyLight.setup();
 	//keyLight.setAmbientColor(ofFloatColor(200, 0, 150));
@@ -66,30 +75,10 @@ void ofApp::setup(){
 	//keyLight.setSpotlightCutOff(5);
 	//keyLight.setOrientation(glm::vec3(-90, 0, 0));
 	//keyLight.enable();
-
 	fillLight.setup();
 	fillLight.setPointLight();
 	fillLight.setPosition(-180, 300, 180);
 	fillLight.enable();
-
-	//ravineLight.setup();
-	//ravineLight.setSpecularColor(ofFloatColor(200, 0, 0));
-	//ravineLight.setDiffuseColor(ofFloatColor(200, 0, 0));
-	//ravineLight.setAmbientColor(ofFloatColor(200, 0, 0));
-	//ravineLight.setAttenuation();
-	//ravineLight.setAreaLight(500, 10);
-	//ravineLight.setPosition(338, -300, 90);
-	//ravineLight.setOrientation(glm::vec3(90, 0, 0));
-	//ravineLight.enable();
-
-	terrain.loadModel("geo/peak_terrain.obj");
-	terrain.setScaleNormalization(false);
-
-	if (background.load("images/space.jpg")) {
-		cout << "Background loaded" << endl;
-	} else {
-		cout << "Can't open background image file" << endl;
-	}
 
 	//  Create Octree for testing.
 	//
@@ -97,45 +86,38 @@ void ofApp::setup(){
 	octree.create(terrain.getMesh(0), 20);
 	float t2 = ofGetElapsedTimeMicros();
 	cout << "Time to Create Octree: " << (t2 - t1) / 1000 << " millisec" << endl;
-	
 	cout << "Number of Verts: " << terrain.getMesh(0).getNumVertices() << endl;
 
+	//Set up exhaust emitter
 	exhaustEmitter.setEmitterType(RadialEmitter);
 	exhaustEmitter.setLifespan(0.1);
 	exhaustEmitter.setParticleRadius(0.6);
 	exhaustEmitter.setRate(0);
 	exhaustEmitter.start();
-
 	exhaustTurbulence = new TurbulenceForce(ofVec3f(-500, -500, -500), ofVec3f( 500,  500,  500));
 	exhaustEmitter.sys->addForce(exhaustTurbulence);
-
 }
  
 //--------------------------------------------------------------
 // incrementally update scene (animation)
 //
 void ofApp::update() {
-	//Show boxes lander collides with and move lander up when u is pressed
-	if ((colBoxList.size() >= 10) && uClicked) {
-		hmary.setPosition(hmary.getPosition().x, hmary.getPosition().y + 0.1, hmary.getPosition().z);
-		ofVec3f min = hmary.getSceneMin() + hmary.getPosition();
-		ofVec3f max = hmary.getSceneMax() + hmary.getPosition();
-
-		Box bounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
-
-		colBoxList.clear();
-		octree.intersect(bounds, octree.root, colBoxList);
-	} else {
-		uClicked = false;
-	}
-	
-	//movement
-	
-
 	if (bLanderLoaded) {
-		keyLight.enable();
+		//Lander transformation data
+		glm::vec3 landerPos = hmary.getPosition();
+		float d = glm::radians(rotation);
+		glm::vec3 heading = glm::normalize(glm::vec3(-sin(d), 0, -cos(d)));
 
-		rotForce = 0.0;
+		//Cameras
+		trackingCam.lookAt(landerPos);
+		onboardCam.setPosition(landerPos);
+		thirdPerCam.setPosition(landerPos - heading * 15 + glm::vec3(0, 5, 0));
+		thirdPerCam.lookAt(landerPos);
+
+		//Lights
+		//keyLight.setPosition(landerPos);
+
+		//Rotation
 		if (leftKeyDown) {
 			rotForce += 30;
 		}
@@ -143,20 +125,10 @@ void ofApp::update() {
 			rotForce -= 30;
 		}
 		integrateRot();
-		
-		glm::vec3 landerPos = hmary.getPosition();
-		trackingCam.lookAt(landerPos);
-		onboardCam.setPosition(landerPos);
-		keyLight.setPosition(landerPos);
 
+		//Movement and thrust particles
 		bool hasThrust = false;
 		glm::vec3 exhaustDir(0, 0, 0);
-		
-		float d = glm::radians(rotation);
-		glm::vec3 heading = glm::normalize(glm::vec3(-sin(d), 0, -cos(d)));
-		//cout << "Heading in update angle: " << heading << endl;
-
-		thirdPerCam.setPosition(landerPos - heading * 15 + glm::vec3(0, 5, 0));
 
 		if (wKeyDown) {
 			force += heading * speed;
@@ -222,33 +194,29 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 	ofNoFill();
+
+	//background (All GUI and background elements must be rendered in ofDisableDepthTest
 	ofDisableDepthTest();
 	background.draw(0, 0, ofGetWidth(), ofGetHeight());
 	ofEnableDepthTest();
 
+	//3D assets
 	theCam->begin();
 	ofPushMatrix();
+	//Shaded mode
+	ofEnableLighting();
 
-	ofEnableLighting();              // shaded mode
+	//Draw terrain
 	terrain.drawFaces();
+
+	//Draw Lander
 	if (bLanderLoaded) {
 		hmary.drawFaces();
-
 		exhaustEmitter.draw();
 
 		if (!bTerrainSelected) drawAxis(hmary.getPosition());
-		if (bDisplayBBoxes) {
-			ofNoFill();
-			ofSetColor(ofColor::white);
-			for (int i = 0; i < hmary.getNumMeshes(); i++) {
-				ofPushMatrix();
-				ofMultMatrix(hmary.getModelMatrix());
-				ofRotate(-90, 1, 0, 0);
-				Octree::drawBox(bboxList[i]);
-				ofPopMatrix();
-			}
-		}
 
+		//Draw lander selected bbounding box
 		if (bLanderSelected) {
 			ofVec3f min = hmary.getSceneMin() + hmary.getPosition();
 			ofVec3f max = hmary.getSceneMax() + hmary.getPosition();
@@ -258,7 +226,6 @@ void ofApp::draw() {
 			Octree::drawBox(bounds);
 
 			// draw colliding boxes
-			//
 			ofSetColor(ofColor::lightBlue);
 			for (int i = 0; i < colBoxList.size(); i++) {
 				Octree::drawBox(colBoxList[i]);
@@ -267,10 +234,8 @@ void ofApp::draw() {
 	}
 
 	// recursively draw octree
-	//
 	ofDisableLighting();
 	int level = 0;
-
 	if (bDisplayLeafNodes) {
 		octree.drawLeafNodes(octree.root);
 		cout << "num leaf: " << octree.numLeaf << endl;
@@ -361,7 +326,6 @@ void ofApp::keyPressed(int key) {
 		break;
 	case 'B':
 	case 'b':
-		bDisplayBBoxes = !bDisplayBBoxes;
 		break;
 	case 'C':
 	case 'c':
@@ -389,7 +353,6 @@ void ofApp::keyPressed(int key) {
 	case 't':
 		break;
 	case 'u':
-		uClicked = true;
 		break;
 	case 'v':
 	case 'V':
@@ -399,7 +362,6 @@ void ofApp::keyPressed(int key) {
 		bAltKeyDown = true;
 		break;
 	case OF_KEY_CONTROL:
-		bCtrlKeyDown = true;
 		break;
 	case OF_KEY_DEL:
 		break;
@@ -421,7 +383,6 @@ void ofApp::keyReleased(int key) {
 		bAltKeyDown = false;
 		break;
 	case OF_KEY_CONTROL:
-		bCtrlKeyDown = false;
 		break;
 	case 'w':
 		wKeyDown = false;
@@ -509,12 +470,7 @@ bool ofApp::raySelectWithOctree(ofVec3f &pointRet) {
 	Ray ray = Ray(Vector3(rayPoint.x, rayPoint.y, rayPoint.z),
 		Vector3(rayDir.x, rayDir.y, rayDir.z));
 
-	float t1 = ofGetElapsedTimeMicros();
 	pointSelected = octree.intersect(ray, octree.root, selectedNode);
-	float t2 = ofGetElapsedTimeMicros();
-	if (timingInfo) {
-		cout << "Time to Search Octree: " << (t2 - t1) / 1000 << " millisec" << endl;
-	}
 
 	if (pointSelected) {
 		pointRet = octree.mesh.getVertex(selectedNode.points[0]);
@@ -755,7 +711,7 @@ void ofApp::integrateRot() {
 
 	float fr = ofGetFrameRate();
 		if (fr != 0) {
-			float dt = 1.0f / fr;
+			float dt = 1 / fr;
 
 			rotation += rotVel * dt;
 
@@ -770,7 +726,7 @@ void ofApp::integrateRot() {
 			hmary.setRotation(0, rotation, 0, 1, 0);
 		}
 
-		rotForce = 0.0f;
+		rotForce = 0;
 }
 
 float ofApp::rayFindAlt() {
@@ -781,12 +737,12 @@ float ofApp::rayFindAlt() {
 	TreeNode groundNode;
 
 	if (octree.intersect(ray, octree.root, groundNode)) {
-		int i = groundNode.points[0]; // index
-		ofVec3f groundPoint = octree.mesh.getVertex(i); // actual mesh vertex position
-		return origin.y - groundPoint.y; // height difference
+		int i = groundNode.points[0];
+		ofVec3f groundPoint = octree.mesh.getVertex(i);
+		return origin.y - groundPoint.y; 
 	}
 
-	return 0; // or some safe default if no hit
+	return 0;
 }
 
 
