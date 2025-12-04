@@ -14,7 +14,7 @@
 void ofApp::setup(){
 	//Set up models
 	hmary.setScaleNormalization(false);
-	if (hmary.load("geo/SeamothForGame.obj")) {
+	if (hmary.load("geo/lander.obj")) {
 		bLanderLoaded = true;
 		hmary.setPosition(-300, 470, -550);
 		cout << "lander loaded" << endl;
@@ -25,7 +25,7 @@ void ofApp::setup(){
 	}
 
 	terrain.setScaleNormalization(false);
-	terrain.loadModel("geo/peak_terrain.obj");
+	terrain.loadModel("geo/peak-terrain.obj");
 
 	//Fonts and Art
 	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
@@ -43,8 +43,8 @@ void ofApp::setup(){
 	dKeyDown = false;
 	spaceKeyDown = false;
 	shiftKeyDown = false;
-	leftKeyDown = false;
-	rightKeyDown = false;
+	qKeyDown = false;
+	eKeyDown = false;
 	bAltKeyDown = false;
 	showAltitude = true;
 	bTerrainSelected = true;
@@ -82,7 +82,13 @@ void ofApp::setup(){
 	//  Create Octree for testing.
 	//
 	float t1 = ofGetElapsedTimeMicros();
-	octree.create(terrain.getMesh(0), 20);
+
+	ofMesh combinedTerrain;
+	for (int i = 0; i < terrain.getMeshCount(); i++) {
+		combinedTerrain.append(terrain.getMesh(i));
+
+	}
+	octree.create(combinedTerrain, 20);
 	float t2 = ofGetElapsedTimeMicros();
 	cout << "Time to Create Octree: " << (t2 - t1) / 1000 << " millisec" << endl;
 	cout << "Number of Verts: " << terrain.getMesh(0).getNumVertices() << endl;
@@ -110,17 +116,17 @@ void ofApp::update() {
 		//Cameras
 		trackingCam.lookAt(landerPos);
 		onboardCam.setPosition(landerPos);
-		thirdPerCam.setPosition(landerPos - heading * 15 + glm::vec3(0, 5, 0));
+		thirdPerCam.setPosition(landerPos - heading * 20 + glm::vec3(0, 10, 0));
 		thirdPerCam.lookAt(landerPos);
 
 		//Lights
 		//keyLight.setPosition(landerPos);
 
 		//Rotation
-		if (leftKeyDown) {
+		if (qKeyDown) {
 			rotForce += 30;
 		}
-		if (rightKeyDown) {
+		if (eKeyDown) {
 			rotForce -= 30;
 		}
 		integrateRot();
@@ -140,13 +146,13 @@ void ofApp::update() {
 			exhaustDir += heading;
 		}
 		if (dKeyDown) {
-			force += glm::vec3(heading.z, 0, heading.x) * speed;
+			force += glm::vec3(-heading.z, 0, heading.x) * speed;
 			hasThrust = true;
 			glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
 			exhaustDir += -right;
 		}
 		if (aKeyDown) {
-			force += glm::vec3(heading.z, 0, heading.x) * -speed;
+			force += glm::vec3(heading.z, 0, -heading.x) * speed;
 			hasThrust = true;
 			glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
 			exhaustDir += right;
@@ -207,7 +213,7 @@ void ofApp::update() {
 void ofApp::draw() {
 	ofNoFill();
 
-	//background (All GUI and background elements must be rendered in ofDisableDepthTest
+	//background
 	ofDisableDepthTest();
 	background.draw(0, 0, ofGetWidth(), ofGetHeight());
 	ofEnableDepthTest();
@@ -261,12 +267,13 @@ void ofApp::draw() {
 	ofPopMatrix();
 	theCam->end();
 
-	glDepthMask(false);
+	//GUI
+	ofDisableDepthTest();
 	if (!bHide) gui.draw();
 	if (showAltitude && bLanderLoaded) {
 		guiFont.drawString("Altitude: " + ofToString(rayFindAlt()), (ofGetWidth() / 2) - 150, 120);
 	}
-	glDepthMask(true);
+	ofEnableDepthTest();
 }
 
 
@@ -300,15 +307,19 @@ void ofApp::drawAxis(ofVec3f location) {
 void ofApp::keyPressed(int key) {
 
 	switch (key) {
+	case 'W':
 	case 'w':
 		wKeyDown = true;
 		break;
+	case 'A':
 	case 'a':
 		aKeyDown = true;
 		break;
+	case 'S':
 	case 's':
 		sKeyDown = true;
 		break;
+	case 'D':
 	case 'd':
 		dKeyDown = true;
 		break;
@@ -318,11 +329,13 @@ void ofApp::keyPressed(int key) {
 	case OF_KEY_SHIFT:
 		shiftKeyDown = true;
 		break;
-	case OF_KEY_RIGHT:
-		rightKeyDown = true;
+	case 'Q':
+	case 'q':
+		qKeyDown = true;
 		break;
-	case OF_KEY_LEFT:
-		leftKeyDown = true;
+	case 'E':
+	case 'e':
+		eKeyDown = true;
 		break;
 	case '1':
 		theCam = &thirdPerCam;
@@ -359,6 +372,7 @@ void ofApp::keyPressed(int key) {
 	case 'o':
 		bDisplayOctree = !bDisplayOctree;
 		break;
+	case 'R':
 	case 'r':
 		cam.reset();
 		break;
@@ -396,15 +410,19 @@ void ofApp::keyReleased(int key) {
 		break;
 	case OF_KEY_CONTROL:
 		break;
+	case 'W':
 	case 'w':
 		wKeyDown = false;
 		break;
+	case 'A':
 	case 'a':
 		aKeyDown = false;
 		break;
+	case 'S':
 	case 's':
 		sKeyDown = false;
 		break;
+	case 'D':
 	case 'd':
 		dKeyDown = false;
 		break;
@@ -414,11 +432,13 @@ void ofApp::keyReleased(int key) {
 	case OF_KEY_SHIFT:
 		shiftKeyDown = false;
 		break;
-	case OF_KEY_RIGHT:
-		rightKeyDown = false;
+	case 'E':
+	case 'e':
+		eKeyDown = false;
 		break;
-	case OF_KEY_LEFT:
-		leftKeyDown = false;
+	case 'Q':
+	case 'q':
+		qKeyDown = false;
 		break;
 	default:
 		break;
@@ -712,7 +732,6 @@ void ofApp::integrateMove() {
 		if (force != glm::vec3(0, 0, 0)) {
 			accel += (1.0 / mass * force);
 		}
-
 		velocity += accel * dt;
 		velocity *= damping;
 	}
