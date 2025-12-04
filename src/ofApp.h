@@ -50,11 +50,12 @@ class ofApp : public ofBaseApp{
 		float rotVel = 0;
 		float rotAcc = 0;
 		float rotForce = 0;
+		float speed = 300;
 
 		//Camera
 		ofEasyCam cam;
 		ofCamera * theCam = NULL;
-		ofCamera onboardCam, trackingCam;
+		ofCamera onboardCam, trackingCam, thirdPerCam;
 
 		//lights
 		ofLight keyLight, fillLight, ravineLight;
@@ -63,7 +64,6 @@ class ofApp : public ofBaseApp{
 		ofxAssimpModelLoader terrain, hmary;
 		ofTrueTypeFont guiFont;
 		ofImage background;
-
 
 		bool wKeyDown;
 		bool aKeyDown;

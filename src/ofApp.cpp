@@ -13,6 +13,17 @@
 // setup scene, lighting, state and load geometry
 //
 void ofApp::setup(){
+	hmary.setScaleNormalization(false);
+	if (hmary.load("geo/SeamothForGame.obj")) {
+		bLanderLoaded = true;
+		cout << "lander loaded" << endl;
+		hmary.setPosition(-300, 470, -550);
+	}
+	else {
+		bLanderLoaded = false;
+		cout << "could not load lander" << endl;
+	}
+
 	wKeyDown = false;
 	aKeyDown = false;
 	sKeyDown = false;
@@ -23,7 +34,6 @@ void ofApp::setup(){
 	rightKeyDown = false;
 	bAltKeyDown = false;
 	bCtrlKeyDown = false;
-	bLanderLoaded = false;
 	bTerrainSelected = true;
 	showAltitude = true;
 
@@ -33,7 +43,8 @@ void ofApp::setup(){
 	onboardCam = ofCamera();
 	trackingCam = ofCamera();
 	trackingCam.setPosition(-180, 80, 180);
-	theCam = &cam;
+	thirdPerCam = ofCamera();
+	theCam = &thirdPerCam;
 
 	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
 	
@@ -47,14 +58,14 @@ void ofApp::setup(){
 	// setup rudimentary lighting 
 	//
 	//initLightingAndMaterials();
-	keyLight.setup();
-	keyLight.setAmbientColor(ofFloatColor(200, 0, 150));
-	keyLight.setDiffuseColor(ofFloatColor(200, 0, 150));
-	keyLight.setSpecularColor(ofFloatColor(200, 0, 150));
-	keyLight.setSpotlight();
-	keyLight.setSpotlightCutOff(5);
-	keyLight.setOrientation(glm::vec3(-90, 0, 0));
-	keyLight.enable();
+	//keyLight.setup();
+	//keyLight.setAmbientColor(ofFloatColor(200, 0, 150));
+	//keyLight.setDiffuseColor(ofFloatColor(200, 0, 150));
+	//keyLight.setSpecularColor(ofFloatColor(200, 0, 150));
+	//keyLight.setSpotlight();
+	//keyLight.setSpotlightCutOff(5);
+	//keyLight.setOrientation(glm::vec3(-90, 0, 0));
+	//keyLight.enable();
 
 	fillLight.setup();
 	fillLight.setPointLight();
@@ -95,7 +106,7 @@ void ofApp::setup(){
 	exhaustEmitter.setRate(0);
 	exhaustEmitter.start();
 
-	exhaustTurbulence = new TurbulenceForce(ofVec3f(-100, -100, -100), ofVec3f( 100,  100,  100));
+	exhaustTurbulence = new TurbulenceForce(ofVec3f(-500, -500, -500), ofVec3f( 500,  500,  500));
 	exhaustEmitter.sys->addForce(exhaustTurbulence);
 
 }
@@ -122,6 +133,8 @@ void ofApp::update() {
 	
 
 	if (bLanderLoaded) {
+		keyLight.enable();
+
 		rotForce = 0.0;
 		if (leftKeyDown) {
 			rotForce += 30;
@@ -143,43 +156,45 @@ void ofApp::update() {
 		glm::vec3 heading = glm::normalize(glm::vec3(-sin(d), 0, -cos(d)));
 		//cout << "Heading in update angle: " << heading << endl;
 
+		thirdPerCam.setPosition(landerPos - heading * 15 + glm::vec3(0, 5, 0));
+
 		if (wKeyDown) {
-			force += heading * 5;
+			force += heading * speed;
 			hasThrust = true;
 			exhaustDir += -heading;
 		}
 		if (sKeyDown) {
-			force += heading * -5;
+			force += heading * -speed;
 			hasThrust = true;
 			exhaustDir += heading;
 		}
 		if (dKeyDown) {
-			force += glm::vec3(heading.z, 0, heading.x) * 5;
+			force += glm::vec3(heading.z, 0, heading.x) * speed;
 			hasThrust = true;
 			glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
 			exhaustDir += -right;
 		}
 		if (aKeyDown) {
-			force += glm::vec3(heading.z, 0, heading.x) * -5;
+			force += glm::vec3(heading.z, 0, heading.x) * -speed;
 			hasThrust = true;
 			glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
 			exhaustDir += right;
 		}
 		if (spaceKeyDown) {
-			force = glm::vec3(0, 1, 0) * 5;
+			force += glm::vec3(0, 1, 0) * speed;
 			hasThrust = true;
 			glm::vec3 up = glm::vec3(0, 1, 0);
 			exhaustDir += -up;
 		}
 		if (shiftKeyDown) {
-			force = glm::vec3(0, 1, 0) * -5;
+			force += glm::vec3(0, 1, 0) * -speed;
 		}
 
         if (hasThrust && exhaustDir != glm::vec3(0, 0, 0)) {
             exhaustDir = glm::normalize(exhaustDir);
 
-            float exhaustSpeed  = 20.0f;
-            float exhaustOffset = 0.5f;
+            float exhaustSpeed  = 20.0;
+            float exhaustOffset = 0.5;
 
             ofVec3f emitterPos(landerPos.x, landerPos.y, landerPos.z);
             ofVec3f offset(exhaustDir.x * exhaustOffset,
@@ -192,9 +207,9 @@ void ofApp::update() {
                                                 exhaustDir.y * exhaustSpeed,
                                                 exhaustDir.z * exhaustSpeed));
 
-            exhaustEmitter.setRate(80.0f);
+            exhaustEmitter.setRate(200.0);
         } else {
-            exhaustEmitter.setRate(0.0f);
+            exhaustEmitter.setRate(0.0);
         }
 
         exhaustEmitter.update();
@@ -209,8 +224,8 @@ void ofApp::draw() {
 	ofNoFill();
 	ofDisableDepthTest();
 	background.draw(0, 0, ofGetWidth(), ofGetHeight());
-
 	ofEnableDepthTest();
+
 	theCam->begin();
 	ofPushMatrix();
 
@@ -333,13 +348,16 @@ void ofApp::keyPressed(int key) {
 		leftKeyDown = true;
 		break;
 	case '1':
-		theCam = &cam;
+		theCam = &thirdPerCam;
 		break;
 	case '2':
 		theCam = &onboardCam;
 		break;
 	case '3':
 		theCam = &trackingCam;
+		break;
+	case '4':
+		theCam = &cam;
 		break;
 	case 'B':
 	case 'b':
