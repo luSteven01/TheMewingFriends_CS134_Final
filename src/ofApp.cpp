@@ -1,4 +1,3 @@
-
 //--------------------------------------------------------------
 //
 //  Kevin M. Smith
@@ -90,8 +89,8 @@ void ofApp::setup(){
 
 	//Set up exhaust emitter
 	exhaustEmitter.setEmitterType(RadialEmitter);
-	exhaustEmitter.setLifespan(0.1);
-	exhaustEmitter.setParticleRadius(0.6);
+	exhaustEmitter.setLifespan(0.3);
+	exhaustEmitter.setParticleRadius(0.3);
 	exhaustEmitter.setRate(0);
 	exhaustEmitter.start();
 	exhaustTurbulence = new TurbulenceForce(ofVec3f(-500, -500, -500), ofVec3f( 500,  500,  500));
@@ -188,6 +187,19 @@ void ofApp::update() {
 	}
 
 	integrateMove();
+	if (bLanderLoaded) {
+        ofVec3f min = hmary.getSceneMin() + hmary.getPosition();
+        ofVec3f max = hmary.getSceneMax() + hmary.getPosition();
+        Box bounds(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
+
+        colBoxList.clear();
+        octree.intersect(bounds, octree.root, colBoxList);
+
+        if (!colBoxList.empty()) {
+            ofVec3f avgNormal = getAverageNormal();
+            resolveCollision(avgNormal);
+        }
+    }
 
 }
 
@@ -544,15 +556,15 @@ void ofApp::gotMessage(ofMessage msg){
 void ofApp::initLightingAndMaterials() {
 
 	static float ambient[] =
-	{ .5f, .5f, .5, 1.0f };
+	{ .5, .5, .5, 1.0 };
 	static float diffuse[] =
-	{ 1.0f, 1.0f, 1.0f, 1.0f };
+	{ 1.0, 1.0, 1.0, 1.0 };
 
 	static float position[] =
 	{5.0, 5.0, 5.0, 0.0 };
 
 	static float lmodel_ambient[] =
-	{ 1.0f, 1.0f, 1.0f, 1.0f };
+	{ 1.0, 1.0, 1.0, 1.0 };
 
 	static float lmodel_twoside[] =
 	{ GL_TRUE };
@@ -711,12 +723,12 @@ void ofApp::integrateRot() {
 
 	float fr = ofGetFrameRate();
 		if (fr != 0) {
-			float dt = 1 / fr;
+			float dt = 1.0 / fr;
 
 			rotation += rotVel * dt;
 
 			float accel = rotAcc;
-			if (rotForce != 0.0f) {
+			if (rotForce != 0.0) {
 				accel += (rotForce / mass);
 			}
 
@@ -737,12 +749,128 @@ float ofApp::rayFindAlt() {
 	TreeNode groundNode;
 
 	if (octree.intersect(ray, octree.root, groundNode)) {
-		int i = groundNode.points[0];
-		ofVec3f groundPoint = octree.mesh.getVertex(i);
-		return origin.y - groundPoint.y; 
+		int i = groundNode.points[0]; // index
+		ofVec3f groundPoint = octree.mesh.getVertex(i); // actual mesh vertex position
+		return origin.y - groundPoint.y; // height difference
 	}
 
 	return 0;
 }
 
+ofVec3f ofApp::getAverageNormal() {
+    ofVec3f sum(0, 0, 0);
+    int count = 0;
 
+    ofMesh &mesh = octree.mesh; 
+    int nVerts   = mesh.getNumVertices();
+    int nNormals = mesh.getNumNormals();
+
+    if (nNormals == 0) {
+        return ofVec3f(0, 1, 0);
+    }
+
+    for (int i = 0; i < nVerts; i++) {
+        ofVec3f vert = mesh.getVertex(i);
+        Vector3 vPoint(vert.x, vert.y, vert.z);
+
+        bool insideAnyBox = false;
+        for (Box &box : colBoxList) {
+            if (box.inside(vPoint)) {     
+                insideAnyBox = true;
+                break;              
+            }
+        }
+
+        if (insideAnyBox) {
+            if (i < nNormals) {
+                ofVec3f norm = mesh.getNormal(i);
+                sum += norm;
+                count++;
+            }
+        }
+    }
+
+    if (count == 0) {
+        return ofVec3f(0, 1, 0);   // fallback: straight up
+    }
+
+    sum /= (float)count;
+    sum.normalize();
+    return sum;
+}
+
+void ofApp::resolveCollision(const ofVec3f &normalOF) {
+    if (!bLanderLoaded) return;
+
+    // 1) Normalize the normal
+    glm::vec3 n(normalOF.x, normalOF.y, normalOF.z);
+    if (glm::length2(n) < 0.000001) {
+        n = glm::vec3(0, 1, 0);
+    } else {
+        n = glm::normalize(n);
+    }
+
+    // 2) Decompose velocity into normal and tangential components
+    glm::vec3 v = velocity;
+    float vn = glm::dot(v, n);     // velocity along normal
+    glm::vec3 vN = vn * n;
+    glm::vec3 vT = v - vN;
+
+    // Speed INTO the terrain along the normal is:
+    float impactSpeed = (vn < 0.0) ? -vn : 0.0;
+
+    // --- Landing / crash classification (only once) ---
+    if (!bLanded && !bCrashed && impactSpeed > 0.0) {
+        if (impactSpeed > crashSpeed) {
+            // CRASH
+            bCrashed = true;
+            bLanded  = false;
+            velocity = glm::vec3(0, 0, 0);
+
+            // optional: small push out so it doesn't clip
+            glm::vec3 pos = hmary.getPosition();
+            pos += n * 0.05;
+            hmary.setPosition(pos.x, pos.y, pos.z);
+
+            // TODO: trigger explosion particle, game-over, sound, etc.
+            return;
+        }
+        else if (impactSpeed <= landSpeed) {
+            // SOFT LANDING
+            bLanded  = true;
+            bCrashed = false;
+            velocity = glm::vec3(0, 0, 0);
+
+            glm::vec3 pos = hmary.getPosition();
+            pos += n * 0.02;  // tiny lift
+            hmary.setPosition(pos.x, pos.y, pos.z);
+            return;
+        }
+        // Otherwise, "medium" impact → bounce
+    }
+
+    // --- Velocity response for overlap ---
+
+    float restitution = 0.6;  // MORE bouncy
+    float friction    = 0.3;  // LESS tangential damping
+
+    if (vn < 0.0) {
+        // Moving INTO the surface: reflect with restitution
+        vN *= -restitution;
+    } else {
+        // Already moving out or parallel:
+        // remove any tiny drift into terrain along normal
+        vN = glm::vec3(0, 0, 0);
+    }
+
+    // Apply friction to tangential component
+    vT *= (1.0 - friction * 0.02);
+
+    velocity = vT + vN;
+
+    // --- Positional correction (this is key for steep slopes) ---
+    // Always push OUT along the normal if overlapping
+    glm::vec3 pos = hmary.getPosition();
+    pos += n * 0.1;  // a bit bigger than 0.05; tune this
+    hmary.setPosition(pos.x, pos.y, pos.z);
+}

@@ -36,7 +36,9 @@ class ofApp : public ofBaseApp{
 		bool raySelectWithOctree(ofVec3f &pointRet);
 		float rayFindAlt();
 		glm::vec3 getMousePointOnPlane(glm::vec3 p , glm::vec3 n);
-
+		ofVec3f getAverageNormal();
+    	void resolveCollision(const ofVec3f &normal);
+	
 		//Integrated movement
 		void integrateMove();
 		void integrateRot();
@@ -102,5 +104,10 @@ class ofApp : public ofBaseApp{
 		ParticleEmitter exhaustEmitter;
 		TurbulenceForce* exhaustTurbulence = nullptr;
 
-
+		float  crashSpeed   = 18.0;
+		float  landSpeed  = 2.0;
+		bool   bLanded    = false;
+		bool   bCrashed   = false;
+		vector<int> terrainFaces;        // all face indices in the terrain mesh
+    	vector<int> collidingFaces; 
 };
