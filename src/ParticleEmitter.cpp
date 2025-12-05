@@ -36,7 +36,7 @@ void ParticleEmitter::init() {
 	radius = 1;
 	particleRadius = .1;
 	visible = true;
-	type = DirectionalEmitter;
+	type = RadialEmitter;
 }
 
 
@@ -83,10 +83,15 @@ void ParticleEmitter::update() {
 		// based on emitter type
 		//
 		switch (type) {
-		case RadialEmitter:
-	//		break;
+		case RadialEmitter: {
+			ofVec3f dir = ofVec3f(ofRandom(-1, 1), ofRandom(-1, 1), ofRandom(-1, 1));
+			float speed = velocity.length();
+			particle.velocity = dir.getNormalized() * speed;
+			particle.position.set(position);
+			break;
+		}
 		case SphereEmitter:
-	//		break;
+			break;
 		case DirectionalEmitter:
 			particle.velocity = velocity;
 			particle.position.set(position);

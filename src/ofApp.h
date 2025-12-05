@@ -38,6 +38,7 @@ class ofApp : public ofBaseApp{
 		glm::vec3 getMousePointOnPlane(glm::vec3 p , glm::vec3 n);
 		ofVec3f getAverageNormal();
     	void resolveCollision(const ofVec3f &normal);
+		void loadVbo();
 	
 		//Integrated movement
 		void integrateMove();
@@ -103,6 +104,12 @@ class ofApp : public ofBaseApp{
 		//Particles
 		ParticleEmitter exhaustEmitter;
 		TurbulenceForce* exhaustTurbulence = nullptr;
+		ofTexture particleTex;
+		float particleRadius = 50;
+
+		// shaders
+		ofVbo vbo;
+		ofShader shader;
 
 		float  crashSpeed   = 18.0;
 		float  landSpeed  = 2.0;

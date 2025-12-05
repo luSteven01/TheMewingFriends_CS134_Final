@@ -36,6 +36,19 @@ void ofApp::setup(){
 		cout << "Can't open background image file" << endl;
 	}
 
+	//Shaders
+	ofDisableArbTex();
+	if (!ofLoadImage(particleTex, "images/dot.png")) {
+		cout << "Particle Texture File: images/dot.png not found" << endl;
+		ofExit();
+	}
+
+	#ifdef TARGET_OPENGLES
+	shader.load("shaders_gles/shader");
+	#else
+	shader.load("shaders/shader");
+	#endif
+
 	//initialize controls
 	wKeyDown = false;
 	aKeyDown = false;
@@ -96,7 +109,7 @@ void ofApp::setup(){
 	//Set up exhaust emitter
 	exhaustEmitter.setEmitterType(RadialEmitter);
 	exhaustEmitter.setLifespan(0.3);
-	exhaustEmitter.setParticleRadius(0.3);
+	exhaustEmitter.setParticleRadius(particleRadius);
 	exhaustEmitter.setRate(0);
 	exhaustEmitter.start();
 	exhaustTurbulence = new TurbulenceForce(ofVec3f(-500, -500, -500), ofVec3f( 500,  500,  500));
@@ -213,6 +226,8 @@ void ofApp::update() {
 void ofApp::draw() {
 	ofNoFill();
 
+	loadVbo();
+
 	//background
 	ofDisableDepthTest();
 	background.draw(0, 0, ofGetWidth(), ofGetHeight());
@@ -230,7 +245,7 @@ void ofApp::draw() {
 	//Draw Lander
 	if (bLanderLoaded) {
 		hmary.drawFaces();
-		exhaustEmitter.draw();
+		//exhaustEmitter.draw();
 
 		if (!bTerrainSelected) drawAxis(hmary.getPosition());
 
@@ -266,6 +281,23 @@ void ofApp::draw() {
 
 	ofPopMatrix();
 	theCam->end();
+
+	glDepthMask(GL_FALSE);
+	ofEnableBlendMode(OF_BLENDMODE_ADD);
+	ofEnablePointSprites();
+	shader.begin();
+	theCam->begin();
+
+	particleTex.bind();
+	vbo.draw(GL_POINTS, 0, (int)exhaustEmitter.sys->particles.size());
+	particleTex.unbind();
+
+	theCam->end();
+	shader.end();
+	ofDisablePointSprites();
+	ofDisableBlendMode();
+	ofEnableAlphaBlending();
+	glDepthMask(GL_TRUE);
 
 	//GUI
 	ofDisableDepthTest();
@@ -892,4 +924,21 @@ void ofApp::resolveCollision(const ofVec3f &normalOF) {
     glm::vec3 pos = hmary.getPosition();
     pos += n * 0.1;  // a bit bigger than 0.05; tune this
     hmary.setPosition(pos.x, pos.y, pos.z);
+}
+
+void ofApp::loadVbo() {
+	if (exhaustEmitter.sys->particles.size() < 1) return;
+
+	vector<ofVec3f> sizes;
+	vector<ofVec3f> points;
+	for (int i = 0; i < exhaustEmitter.sys->particles.size(); i++) {
+		points.push_back(exhaustEmitter.sys->particles[i].position);
+		sizes.push_back(ofVec3f(particleRadius));
+	}
+	// upload the data to the vbo
+	//
+	int total = (int)points.size();
+	vbo.clear();
+	vbo.setVertexData(&points[0], total, GL_STATIC_DRAW);
+	vbo.setNormalData(&sizes[0], total, GL_STATIC_DRAW);
 }
