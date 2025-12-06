@@ -38,8 +38,8 @@ void ofApp::setup(){
 
 	//Shaders
 	ofDisableArbTex();
-	if (!ofLoadImage(particleTex, "images/dot.png")) {
-		cout << "Particle Texture File: images/dot.png not found" << endl;
+	if (!ofLoadImage(particleTex, "images/smoke.png")) {
+		cout << "images/dot.png not found" << endl;
 		ofExit();
 	}
 
@@ -61,6 +61,10 @@ void ofApp::setup(){
 	bAltKeyDown = false;
 	showAltitude = true;
 	bTerrainSelected = true;
+
+	maxFuel = 120.0;
+	remainingFuel = maxFuel;
+	lastTime = ofGetElapsedTimef();
 
 	// create sliders for testing
 	gui.setup();
@@ -144,41 +148,59 @@ void ofApp::update() {
 		}
 		integrateRot();
 
-		//Movement and thrust particles
+		// Time checker for fuel, to see how much time has passed since the last frame
+		float now = ofGetElapsedTimef();
+		float dt = now - lastTime;
+		lastTime = now;
+
 		bool hasThrust = false;
 		glm::vec3 exhaustDir(0, 0, 0);
 
-		if (wKeyDown) {
-			force += heading * speed;
-			hasThrust = true;
-			exhaustDir += -heading;
+		bool canThrust = (remainingFuel > 0.0);
+
+		//Movement and thrust particles
+
+		if (canThrust) {
+			if (wKeyDown) {
+				force += heading * speed;
+				hasThrust = true;
+				exhaustDir += -heading;
+			}
+			if (sKeyDown) {
+				force += heading * -speed;
+				hasThrust = true;
+				exhaustDir += heading;
+			}
+			if (dKeyDown) {
+				force += glm::vec3(-heading.z, 0, heading.x) * speed;
+				hasThrust = true;
+				glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
+				exhaustDir += -right;
+			}
+			if (aKeyDown) {
+				force += glm::vec3(heading.z, 0, -heading.x) * speed;
+				hasThrust = true;
+				glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
+				exhaustDir += right;
+			}
+			if (spaceKeyDown) {
+				force += glm::vec3(0, 1, 0) * speed;
+				hasThrust = true;
+				glm::vec3 up = glm::vec3(0, 1, 0);
+				exhaustDir += -up;
+			}
+			if (shiftKeyDown) {
+				force += glm::vec3(0, 1, 0) * -speed;
+			}
+
 		}
-		if (sKeyDown) {
-			force += heading * -speed;
-			hasThrust = true;
-			exhaustDir += heading;
-		}
-		if (dKeyDown) {
-			force += glm::vec3(-heading.z, 0, heading.x) * speed;
-			hasThrust = true;
-			glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
-			exhaustDir += -right;
-		}
-		if (aKeyDown) {
-			force += glm::vec3(heading.z, 0, -heading.x) * speed;
-			hasThrust = true;
-			glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
-			exhaustDir += right;
-		}
-		if (spaceKeyDown) {
-			force += glm::vec3(0, 1, 0) * speed;
-			hasThrust = true;
-			glm::vec3 up = glm::vec3(0, 1, 0);
-			exhaustDir += -up;
-		}
-		if (shiftKeyDown) {
-			force += glm::vec3(0, 1, 0) * -speed;
-		}
+			if (hasThrust && remainingFuel > 0.0) {
+				remainingFuel = remainingFuel - dt;
+				if (remainingFuel < 0.0) {
+					remainingFuel = 0.0;
+				}
+			}
+
 
         if (hasThrust && exhaustDir != glm::vec3(0, 0, 0)) {
             exhaustDir = glm::normalize(exhaustDir);
@@ -304,6 +326,14 @@ void ofApp::draw() {
 	if (!bHide) gui.draw();
 	if (showAltitude && bLanderLoaded) {
 		guiFont.drawString("Altitude: " + ofToString(rayFindAlt()), (ofGetWidth() / 2) - 150, 120);
+	}
+
+	if (remainingFuel > 0) {
+		guiFont.drawString("Fuel Remaining:" + ofToString(remainingFuel, 1), (ofGetWidth() / 2) - 150, 160);
+	}
+
+	if (remainingFuel == 0) {
+		guiFont.drawString("OUT OF FUEL", (ofGetWidth() / 2) - 150, 160);
 	}
 	ofEnableDepthTest();
 }

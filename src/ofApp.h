@@ -117,4 +117,9 @@ class ofApp : public ofBaseApp{
 		bool   bCrashed   = false;
 		vector<int> terrainFaces;        // all face indices in the terrain mesh
     	vector<int> collidingFaces; 
+
+		float maxFuel = 120;
+		float remainingFuel;
+		bool hasFuel;
+		float lastTime;
 };
