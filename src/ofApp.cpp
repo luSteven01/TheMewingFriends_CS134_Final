@@ -191,6 +191,7 @@ void ofApp::update() {
 			}
 			if (shiftKeyDown) {
 				force += glm::vec3(0, 1, 0) * -speed;
+				hasThrust = true;
 			}
 
 		}
