@@ -116,7 +116,7 @@ class ofApp : public ofBaseApp{
 		GravityForce* gravityForce;
 		ImpulseRadialForce* radialForce;
 		float explosionParticleRadius = 50;
-		float explosionLifespan = 2;
+		float explosionLifespan = 5;
 		float explosionRate = 1;
 
 		// shaders
@@ -124,7 +124,7 @@ class ofApp : public ofBaseApp{
 		ofVbo explosionVbo;
 		ofShader shader;
 
-		float  crashSpeed   = 5.0;
+		float  crashSpeed   = 20.0;
 		float  landSpeed  = 2.0;
 		bool   bLanded    = false;
 		bool   bCrashed   = false;

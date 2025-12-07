@@ -125,12 +125,12 @@ void ofApp::setup(){
 	//Set up explosion emitter
 	turbForce = new TurbulenceForce(ofVec3f(-10, -10, -10), ofVec3f(10, 10, 10));
 	gravityForce = new GravityForce(ofVec3f(0, -10, 0));
-	radialForce = new ImpulseRadialForce(2000.0);
+	radialForce = new ImpulseRadialForce(3000.0);
 	explosionEmitter.sys->addForce(turbForce);
 	explosionEmitter.sys->addForce(gravityForce);
 	explosionEmitter.sys->addForce(radialForce);
 
-	explosionEmitter.setVelocity(ofVec3f(0, 20, 0));
+	explosionEmitter.setVelocity(ofVec3f(0, 200, 0));
 	explosionEmitter.setOneShot(true);
 	explosionEmitter.setEmitterType(RadialEmitter);
 	explosionEmitter.setGroupSize(5000);
@@ -156,6 +156,7 @@ void ofApp::update() {
 		trackingCam.lookAt(landerPos);
 		onboardCam.setPosition(landerPos);
 		thirdPerCam.setPosition(landerPos - heading * 20 + glm::vec3(0, 10, 0));
+		//thirdPerCam.setPosition(landerPos + glm::vec3(10, 10, 0));
 		thirdPerCam.lookAt(landerPos);
 
 		//Lights
@@ -206,7 +207,7 @@ void ofApp::update() {
 				exhaustDir += right;
 			}
 			if (spaceKeyDown) {
-				force += glm::vec3(0, 1, 0) * (speed + 15);
+				force += glm::vec3(0, 1, 0) * (speed);
 				hasThrust = true;
 				glm::vec3 up = glm::vec3(0, 1, 0);
 				exhaustDir += -up;
@@ -251,6 +252,8 @@ void ofApp::update() {
 
 		if (bCrashed && !gameOver) {
 			explosionEmitter.start();
+			acceleration = glm::vec3(0, -1, 0);
+			velocity += glm::vec3(ofRandom(0.5, 1), ofRandom(0.5, 1), ofRandom(0.5, 1)) * 500;
 			gameOver = true;
 		}
 	}
@@ -399,7 +402,9 @@ void ofApp::drawAxis(ofVec3f location) {
 
 
 void ofApp::keyPressed(int key) {
-
+	if (gameOver) {
+		return;
+	}
 	switch (key) {
 	case 'W':
 	case 'w':
@@ -445,8 +450,6 @@ void ofApp::keyPressed(int key) {
 		break;
 	case 'B':
 	case 'b':
-		explosionEmitter.sys->reset();
-		explosionEmitter.start();
 		break;
 	case 'C':
 	case 'c':
@@ -924,7 +927,6 @@ void ofApp::resolveCollision(glm::vec3 normal) {
 	if (vAlongNormal < 0) {
 		vAlongNormal *= -1;
 	}
-	//cout << vAlongNormal << endl;
 	if ((vAlongNormal > crashSpeed) && !bCrashed) {
 		bCrashed = true;
 		cout << "Crashed" << endl;
@@ -937,8 +939,7 @@ void ofApp::resolveCollision(glm::vec3 normal) {
 
 
     glm::vec3 pos = hmary.getPosition();
-    //pos += normal * 0.1;  // a bit bigger than 0.05; tune this
-	pos += normal * 0.04; // a bit bigger than 0.05; tune this
+	pos += normal * 0.04;
     hmary.setPosition(pos.x, pos.y, pos.z);
 }
 
