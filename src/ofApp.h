@@ -44,7 +44,7 @@ class ofApp : public ofBaseApp{
 		void integrateMove();
 		void integrateRot();
 		glm::vec3 velocity = glm::vec3(0,0,0);
-		glm::vec3 acceleration = glm::vec3(0, -9.8, 0);
+		glm::vec3 acceleration = glm::vec3(0, -50, 0);
 		glm::vec3 force = glm::vec3(0, 0, 0);
 		float damping = 0.99;
 		float mass = 1.0;

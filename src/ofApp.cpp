@@ -25,7 +25,7 @@ void ofApp::setup(){
 	}
 
 	terrain.setScaleNormalization(false);
-	terrain.loadModel("geo/peak-terrain.obj");
+	terrain.loadModel("geo/peak-terrain-test2.obj");
 
 	//Fonts and Art
 	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
