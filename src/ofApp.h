@@ -80,7 +80,6 @@ class ofApp : public ofBaseApp{
 		bool shiftKeyDown;
 		bool qKeyDown;
 		bool eKeyDown;
-		bool showAltitude;
 		bool bAltKeyDown;
 		glm::vec3 mouseDownPos, mouseLastPos;
 

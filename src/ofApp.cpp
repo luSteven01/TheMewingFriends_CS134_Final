@@ -63,7 +63,6 @@ void ofApp::setup(){
 	qKeyDown = false;
 	eKeyDown = false;
 	bAltKeyDown = false;
-	showAltitude = true;
 	bTerrainSelected = true;
 
 	maxFuel = 120.0;
@@ -358,9 +357,11 @@ void ofApp::draw() {
 
 	//GUI
 	ofDisableDepthTest();
-	if (!bHide) gui.draw();
-	if (showAltitude && bLanderLoaded) {
-		guiFont.drawString("Altitude: " + ofToString(rayFindAlt()), (ofGetWidth() / 2) - 150, 120);
+	if (!bHide) {
+		gui.draw();
+		if (bLanderLoaded) {
+			guiFont.drawString("Altitude: " + ofToString(rayFindAlt()), (ofGetWidth() / 2) - 150, 120);
+		}
 	}
 
 	if (remainingFuel > 0) {
@@ -462,6 +463,7 @@ void ofApp::keyPressed(int key) {
 		break;
 	case 'H':
 	case 'h':
+		bHide = !bHide;
 		break;
 	case 'L':
 	case 'l':
