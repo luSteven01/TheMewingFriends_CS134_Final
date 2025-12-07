@@ -38,7 +38,8 @@ class ofApp : public ofBaseApp{
 		glm::vec3 getMousePointOnPlane(glm::vec3 p , glm::vec3 n);
 		ofVec3f getAverageNormal();
     	void resolveCollision(glm::vec3 normal);
-		void loadVbo();
+		void loadExhaustVbo();
+		void loadExplosionVbo();
 	
 		//Integrated movement
 		void integrateMove();
@@ -52,7 +53,7 @@ class ofApp : public ofBaseApp{
 		float rotVel = 0;
 		float rotAcc = 0;
 		float rotForce = 0;
-		float speed = 300;
+		float speed = 100;
 
 		//Camera
 		ofEasyCam cam;
@@ -90,6 +91,7 @@ class ofApp : public ofBaseApp{
 		ofxPanel gui;
 		ofxIntSlider numLevels;
 		bool bHide;
+		bool gameOver = false;
 
 		//Spatial Subdivision
 		Octree octree;
@@ -100,6 +102,7 @@ class ofApp : public ofBaseApp{
 		bool pointSelected = false;
 		bool bDisplayLeafNodes = false;
 		bool bDisplayOctree = false;
+		float altPoint = 0;
 
 		//Particles
 		ParticleEmitter exhaustEmitter;
@@ -107,11 +110,21 @@ class ofApp : public ofBaseApp{
 		ofTexture particleTex;
 		float particleRadius = 50;
 
+		ParticleEmitter explosionEmitter;
+		ofTexture explosionTex;
+		TurbulenceForce* turbForce;
+		GravityForce* gravityForce;
+		ImpulseRadialForce* radialForce;
+		float explosionParticleRadius = 50;
+		float explosionLifespan = 2;
+		float explosionRate = 1;
+
 		// shaders
-		ofVbo vbo;
+		ofVbo exhaustVbo;
+		ofVbo explosionVbo;
 		ofShader shader;
 
-		float  crashSpeed   = 18.0;
+		float  crashSpeed   = 5.0;
 		float  landSpeed  = 2.0;
 		bool   bLanded    = false;
 		bool   bCrashed   = false;

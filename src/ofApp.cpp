@@ -25,7 +25,7 @@ void ofApp::setup(){
 	}
 
 	terrain.setScaleNormalization(false);
-	terrain.loadModel("geo/peak-terrain-test2.obj");
+	terrain.loadModel("geo/peak-terrain-test4.obj");
 
 	//Fonts and Art
 	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
@@ -40,6 +40,10 @@ void ofApp::setup(){
 	ofDisableArbTex();
 	if (!ofLoadImage(particleTex, "images/smoke.png")) {
 		cout << "images/dot.png not found" << endl;
+		ofExit();
+	}
+	if (!ofLoadImage(explosionTex, "images/explosion.png")) {
+		cout << "images/explosion.png not found" << endl;
 		ofExit();
 	}
 
@@ -99,7 +103,6 @@ void ofApp::setup(){
 	//  Create Octree for testing.
 	//
 	float t1 = ofGetElapsedTimeMicros();
-
 	ofMesh combinedTerrain;
 	for (int i = 0; i < terrain.getMeshCount(); i++) {
 		combinedTerrain.append(terrain.getMesh(i));
@@ -118,6 +121,22 @@ void ofApp::setup(){
 	exhaustEmitter.start();
 	exhaustTurbulence = new TurbulenceForce(ofVec3f(-500, -500, -500), ofVec3f( 500,  500,  500));
 	exhaustEmitter.sys->addForce(exhaustTurbulence);
+
+	//Set up explosion emitter
+	turbForce = new TurbulenceForce(ofVec3f(-10, -10, -10), ofVec3f(10, 10, 10));
+	gravityForce = new GravityForce(ofVec3f(0, -10, 0));
+	radialForce = new ImpulseRadialForce(2000.0);
+	explosionEmitter.sys->addForce(turbForce);
+	explosionEmitter.sys->addForce(gravityForce);
+	explosionEmitter.sys->addForce(radialForce);
+
+	explosionEmitter.setVelocity(ofVec3f(0, 20, 0));
+	explosionEmitter.setOneShot(true);
+	explosionEmitter.setEmitterType(RadialEmitter);
+	explosionEmitter.setGroupSize(5000);
+	explosionEmitter.setLifespan(explosionLifespan);
+	explosionEmitter.setRate(explosionRate);
+	explosionEmitter.setParticleRadius(explosionParticleRadius);
 }
  
 //--------------------------------------------------------------
@@ -125,6 +144,9 @@ void ofApp::setup(){
 //
 void ofApp::update() {
 	if (bLanderLoaded) {
+		explosionEmitter.setPosition(hmary.getPosition());
+		explosionEmitter.update();
+
 		//Lander transformation data
 		glm::vec3 landerPos = hmary.getPosition();
 		float d = glm::radians(rotation);
@@ -184,7 +206,7 @@ void ofApp::update() {
 				exhaustDir += right;
 			}
 			if (spaceKeyDown) {
-				force += glm::vec3(0, 1, 0) * speed;
+				force += glm::vec3(0, 1, 0) * (speed + 15);
 				hasThrust = true;
 				glm::vec3 up = glm::vec3(0, 1, 0);
 				exhaustDir += -up;
@@ -226,6 +248,11 @@ void ofApp::update() {
         }
 
         exhaustEmitter.update();
+
+		if (bCrashed && !gameOver) {
+			explosionEmitter.start();
+			gameOver = true;
+		}
 	}
 
 	integrateMove();
@@ -249,7 +276,8 @@ void ofApp::update() {
 void ofApp::draw() {
 	ofNoFill();
 
-	loadVbo();
+	loadExhaustVbo();
+	loadExplosionVbo();
 
 	//background
 	ofDisableDepthTest();
@@ -268,7 +296,6 @@ void ofApp::draw() {
 	//Draw Lander
 	if (bLanderLoaded) {
 		hmary.drawFaces();
-		//exhaustEmitter.draw();
 
 		if (!bTerrainSelected) drawAxis(hmary.getPosition());
 
@@ -312,8 +339,12 @@ void ofApp::draw() {
 	theCam->begin();
 
 	particleTex.bind();
-	vbo.draw(GL_POINTS, 0, (int)exhaustEmitter.sys->particles.size());
+	exhaustVbo.draw(GL_POINTS, 0, (int)exhaustEmitter.sys->particles.size());
 	particleTex.unbind();
+
+	explosionTex.bind();
+	explosionVbo.draw(GL_POINTS, 0, (int)explosionEmitter.sys->particles.size());
+	explosionTex.unbind();
 
 	theCam->end();
 	shader.end();
@@ -414,6 +445,8 @@ void ofApp::keyPressed(int key) {
 		break;
 	case 'B':
 	case 'b':
+		explosionEmitter.sys->reset();
+		explosionEmitter.start();
 		break;
 	case 'C':
 	case 'c':
@@ -829,23 +862,23 @@ float ofApp::rayFindAlt() {
 	Ray ray(Vector3(origin.x, origin.y, origin.z), Vector3(0, -1, 0));
 
 	TreeNode groundNode;
-
 	if (octree.intersect(ray, octree.root, groundNode)) {
 		int i = groundNode.points[0]; // index
 		ofVec3f groundPoint = octree.mesh.getVertex(i); // actual mesh vertex position
-		return origin.y - groundPoint.y; // height difference
+		altPoint = origin.y - groundPoint.y; // height difference
+		return altPoint;
 	}
 
-	return 0;
+	return altPoint;
 }
 
 ofVec3f ofApp::getAverageNormal() {
     ofVec3f sum(0, 0, 0);
     int count = 0;
 
-    ofMesh &mesh = octree.mesh; 
-    int nVerts   = mesh.getNumVertices();
-    int nNormals = mesh.getNumNormals();
+	ofMesh & mesh = octree.mesh;
+	int nVerts = mesh.getNumVertices();
+	int nNormals = mesh.getNumNormals();
 
     if (nNormals == 0) {
         return ofVec3f(0, 1, 0);
@@ -888,19 +921,28 @@ void ofApp::resolveCollision(glm::vec3 normal) {
     glm::vec3 scaledVAlongNormal = vAlongNormal * normal;
 	glm::vec3 originalMomentum = velocity - scaledVAlongNormal;
 
+	if (vAlongNormal < 0) {
+		vAlongNormal *= -1;
+	}
+	//cout << vAlongNormal << endl;
+	if ((vAlongNormal > crashSpeed) && !bCrashed) {
+		bCrashed = true;
+		cout << "Crashed" << endl;
+	}
 
     float restitution = 0.8;
 	scaledVAlongNormal *= -restitution;
 
     velocity = scaledVAlongNormal + originalMomentum;
 
+
     glm::vec3 pos = hmary.getPosition();
     //pos += normal * 0.1;  // a bit bigger than 0.05; tune this
-	pos += normal * 0.001; // a bit bigger than 0.05; tune this
+	pos += normal * 0.04; // a bit bigger than 0.05; tune this
     hmary.setPosition(pos.x, pos.y, pos.z);
 }
 
-void ofApp::loadVbo() {
+void ofApp::loadExhaustVbo() {
 	if (exhaustEmitter.sys->particles.size() < 1) return;
 
 	vector<ofVec3f> sizes;
@@ -912,7 +954,26 @@ void ofApp::loadVbo() {
 	// upload the data to the vbo
 	//
 	int total = (int)points.size();
-	vbo.clear();
-	vbo.setVertexData(&points[0], total, GL_STATIC_DRAW);
-	vbo.setNormalData(&sizes[0], total, GL_STATIC_DRAW);
+	exhaustVbo.clear();
+	exhaustVbo.setVertexData(&points[0], total, GL_STATIC_DRAW);
+	exhaustVbo.setNormalData(&sizes[0], total, GL_STATIC_DRAW);
 }
+
+void ofApp::loadExplosionVbo() {
+	if (explosionEmitter.sys->particles.size() < 1) return;
+
+	vector<ofVec3f> sizes;
+	vector<ofVec3f> points;
+	for (int i = 0; i < explosionEmitter.sys->particles.size(); i++) {
+		points.push_back(explosionEmitter.sys->particles[i].position);
+		sizes.push_back(ofVec3f(explosionParticleRadius));
+	}
+	// upload the data to the vbo
+	//
+	int total = (int)points.size();
+	explosionVbo.clear();
+	explosionVbo.setVertexData(&points[0], total, GL_STATIC_DRAW);
+	explosionVbo.setNormalData(&sizes[0], total, GL_STATIC_DRAW);
+}
+
+
