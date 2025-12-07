@@ -65,7 +65,7 @@ void ofApp::setup(){
 	bAltKeyDown = false;
 	bTerrainSelected = false;
 
-	maxFuel = 120.0;
+	maxFuel = 12.0;
 	remainingFuel = maxFuel;
 	lastTime = ofGetElapsedTimef();
 
@@ -79,6 +79,7 @@ void ofApp::setup(){
 	ofEnableSmoothing();
 	ofEnableDepthTest();
 	onboardCam = ofCamera();
+	onboardCam.tiltDeg(-90);
 	trackingCam = ofCamera();
 	thirdPerCam = ofCamera();
 	trackingCam.setPosition(-180, 80, 180);
@@ -87,14 +88,15 @@ void ofApp::setup(){
 
 	// setup rudimentary lighting 
 	//initLightingAndMaterials();
-	//keyLight.setup();
-	//keyLight.setAmbientColor(ofFloatColor(200, 0, 150));
-	//keyLight.setDiffuseColor(ofFloatColor(200, 0, 150));
-	//keyLight.setSpecularColor(ofFloatColor(200, 0, 150));
-	//keyLight.setSpotlight();
-	//keyLight.setSpotlightCutOff(5);
-	//keyLight.setOrientation(glm::vec3(-90, 0, 0));
-	//keyLight.enable();
+	keyLight.setup();
+	keyLight.setAmbientColor(ofFloatColor(200, 0, 150));
+	keyLight.setDiffuseColor(ofFloatColor(200, 0, 150));
+	keyLight.setSpecularColor(ofFloatColor(200, 0, 150));
+	keyLight.setSpotlight();
+	keyLight.setSpotlightCutOff(5);
+	keyLight.setOrientation(glm::vec3(-90, 0, 0));
+	keyLight.enable();
+
 	fillLight.setup();
 	fillLight.setPointLight();
 	fillLight.setPosition(-180, 300, 180);
@@ -115,7 +117,7 @@ void ofApp::setup(){
 
 	//Set up exhaust emitter
 	exhaustEmitter.setEmitterType(RadialEmitter);
-	exhaustEmitter.setLifespan(0.3);
+	exhaustEmitter.setLifespan(0.5);
 	exhaustEmitter.setParticleRadius(particleRadius);
 	exhaustEmitter.setRate(0);
 	exhaustEmitter.start();
@@ -124,7 +126,7 @@ void ofApp::setup(){
 
 	//Set up explosion emitter
 	turbForce = new TurbulenceForce(ofVec3f(-10, -10, -10), ofVec3f(10, 10, 10));
-	gravityForce = new GravityForce(ofVec3f(0, -10, 0));
+	gravityForce = new GravityForce(ofVec3f(-50, -50, -50));
 	radialForce = new ImpulseRadialForce(3000.0);
 	explosionEmitter.sys->addForce(turbForce);
 	explosionEmitter.sys->addForce(gravityForce);
@@ -133,7 +135,7 @@ void ofApp::setup(){
 	explosionEmitter.setVelocity(ofVec3f(0, 200, 0));
 	explosionEmitter.setOneShot(true);
 	explosionEmitter.setEmitterType(RadialEmitter);
-	explosionEmitter.setGroupSize(5000);
+	explosionEmitter.setGroupSize(3000);
 	explosionEmitter.setLifespan(explosionLifespan);
 	explosionEmitter.setRate(explosionRate);
 	explosionEmitter.setParticleRadius(explosionParticleRadius);
@@ -147,6 +149,8 @@ void ofApp::update() {
 		explosionEmitter.setPosition(hmary.getPosition());
 		explosionEmitter.update();
 
+		altitude = rayFindAlt();
+
 		//Lander transformation data
 		glm::vec3 landerPos = hmary.getPosition();
 		float d = glm::radians(rotation);
@@ -154,12 +158,18 @@ void ofApp::update() {
 
 		//Cameras
 		trackingCam.lookAt(landerPos);
-		onboardCam.setPosition(landerPos);
 		thirdPerCam.setPosition(landerPos - heading * 20 + glm::vec3(0, 10, 0));
 		thirdPerCam.lookAt(landerPos);
+		onboardCam.setPosition(landerPos + glm ::vec3(0, 7, 0));
+		if (altitude < 60) {
+			onboardCam.lookAt(landerPos + heading * 20 + glm::vec3(0, 10, 0));
+		}  else {
+			onboardCam.lookAt(landerPos + heading + glm::vec3(0, -5, 0));
+		}
 
 		//Lights
-		//keyLight.setPosition(landerPos);
+		keyLight.setPosition(landerPos);
+
 		if (!bLanderSelected || !bLanderPaused) {
 			//Rotation
 			if (qKeyDown) {
@@ -245,10 +255,14 @@ void ofApp::update() {
 				exhaustEmitter.setRate(0.0);
 			}
 
+			//Check if the player has crashed
 			if (bCrashed && !gameOver) {
 				explosionEmitter.start();
+				keyLight.disable();
 				acceleration = glm::vec3(0, -1, 0);
-				velocity += glm::vec3(ofRandom(0.5, 1), ofRandom(0.5, 1), ofRandom(0.5, 1)) * 500;
+				hmary.setPosition(landerPos.x, landerPos.y + 5, landerPos.z);
+				velocity += glm::vec3(ofRandom(0.5, 1), ofRandom(1, 2), ofRandom(0.5, 1)) * 500;
+				theCam = &trackingCam;
 				gameOver = true;
 			}
 
@@ -367,8 +381,9 @@ void ofApp::draw() {
 		guiFont.drawString("Fuel Remaining:" + ofToString(remainingFuel, 1), (ofGetWidth() / 2) - 150, 160);
 	}
 
-	if (remainingFuel == 0) {
+	if (remainingFuel <= 0) {
 		guiFont.drawString("OUT OF FUEL", (ofGetWidth() / 2) - 150, 160);
+		bCrashed = true;
 	}
 	ofEnableDepthTest();
 }
@@ -402,39 +417,36 @@ ofPopMatrix();
 
 
 void ofApp::keyPressed(int key) {
-	if (gameOver) {
-		return;
-	}
 	switch (key) {
 	case 'W':
 	case 'w':
-		wKeyDown = true;
+		if (!gameOver) wKeyDown = true;
 		break;
 	case 'A':
 	case 'a':
-		aKeyDown = true;
+		if (!gameOver) aKeyDown = true;
 		break;
 	case 'S':
 	case 's':
-		sKeyDown = true;
+		if (!gameOver) sKeyDown = true;
 		break;
 	case 'D':
 	case 'd':
-		dKeyDown = true;
+		if (!gameOver) dKeyDown = true;
 		break;
 	case ' ':
-		spaceKeyDown = true;
+		if (!gameOver) spaceKeyDown = true;
 		break;
 	case OF_KEY_SHIFT:
-		shiftKeyDown = true;
+		if (!gameOver) shiftKeyDown = true;
 		break;
 	case 'Q':
 	case 'q':
-		qKeyDown = true;
+		if (!gameOver) qKeyDown = true;
 		break;
 	case 'E':
 	case 'e':
-		eKeyDown = true;
+		if (!gameOver) eKeyDown = true;
 		break;
 	case '1':
 		theCam = &thirdPerCam;
@@ -942,7 +954,7 @@ void ofApp::resolveCollision(glm::vec3 normal) {
 
 
     glm::vec3 pos = hmary.getPosition();
-	pos += normal * 0.04;
+	pos += normal * 0.035;
     hmary.setPosition(pos.x, pos.y, pos.z);
 }
 

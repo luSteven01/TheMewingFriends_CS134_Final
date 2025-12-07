@@ -130,8 +130,11 @@ class ofApp : public ofBaseApp{
 		vector<int> terrainFaces;        // all face indices in the terrain mesh
     	vector<int> collidingFaces; 
 
-		float maxFuel = 120;
+		//float maxFuel = 120;
+		float maxFuel = 12;
 		float remainingFuel;
 		bool hasFuel;
 		float lastTime;
+
+		float altitude;
 };
