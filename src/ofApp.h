@@ -37,7 +37,7 @@ class ofApp : public ofBaseApp{
 		float rayFindAlt();
 		glm::vec3 getMousePointOnPlane(glm::vec3 p , glm::vec3 n);
 		ofVec3f getAverageNormal();
-    	void resolveCollision(const ofVec3f &normal);
+    	void resolveCollision(glm::vec3 normal);
 		void loadVbo();
 	
 		//Integrated movement

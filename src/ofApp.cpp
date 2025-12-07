@@ -881,79 +881,22 @@ ofVec3f ofApp::getAverageNormal() {
     return sum;
 }
 
-void ofApp::resolveCollision(const ofVec3f &normalOF) {
+void ofApp::resolveCollision(glm::vec3 normal) {
     if (!bLanderLoaded) return;
 
-    // 1) Normalize the normal
-    glm::vec3 n(normalOF.x, normalOF.y, normalOF.z);
-    if (glm::length2(n) < 0.000001) {
-        n = glm::vec3(0, 1, 0);
-    } else {
-        n = glm::normalize(n);
-    }
+    float vAlongNormal = glm::dot(velocity, normal);     // velocity along normal
+    glm::vec3 scaledVAlongNormal = vAlongNormal * normal;
+	glm::vec3 originalMomentum = velocity - scaledVAlongNormal;
 
-    // 2) Decompose velocity into normal and tangential components
-    glm::vec3 v = velocity;
-    float vn = glm::dot(v, n);     // velocity along normal
-    glm::vec3 vN = vn * n;
-    glm::vec3 vT = v - vN;
 
-    // Speed INTO the terrain along the normal is:
-    float impactSpeed = (vn < 0.0) ? -vn : 0.0;
+    float restitution = 0.8;
+	scaledVAlongNormal *= -restitution;
 
-    // --- Landing / crash classification (only once) ---
-    if (!bLanded && !bCrashed && impactSpeed > 0.0) {
-        if (impactSpeed > crashSpeed) {
-            // CRASH
-            bCrashed = true;
-            bLanded  = false;
-            velocity = glm::vec3(0, 0, 0);
+    velocity = scaledVAlongNormal + originalMomentum;
 
-            // optional: small push out so it doesn't clip
-            glm::vec3 pos = hmary.getPosition();
-            pos += n * 0.05;
-            hmary.setPosition(pos.x, pos.y, pos.z);
-
-            // TODO: trigger explosion particle, game-over, sound, etc.
-            return;
-        }
-        else if (impactSpeed <= landSpeed) {
-            // SOFT LANDING
-            bLanded  = true;
-            bCrashed = false;
-            velocity = glm::vec3(0, 0, 0);
-
-            glm::vec3 pos = hmary.getPosition();
-            pos += n * 0.02;  // tiny lift
-            hmary.setPosition(pos.x, pos.y, pos.z);
-            return;
-        }
-        // Otherwise, "medium" impact → bounce
-    }
-
-    // --- Velocity response for overlap ---
-
-    float restitution = 0.6;  // MORE bouncy
-    float friction    = 0.3;  // LESS tangential damping
-
-    if (vn < 0.0) {
-        // Moving INTO the surface: reflect with restitution
-        vN *= -restitution;
-    } else {
-        // Already moving out or parallel:
-        // remove any tiny drift into terrain along normal
-        vN = glm::vec3(0, 0, 0);
-    }
-
-    // Apply friction to tangential component
-    vT *= (1.0 - friction * 0.02);
-
-    velocity = vT + vN;
-
-    // --- Positional correction (this is key for steep slopes) ---
-    // Always push OUT along the normal if overlapping
     glm::vec3 pos = hmary.getPosition();
-    pos += n * 0.1;  // a bit bigger than 0.05; tune this
+    //pos += normal * 0.1;  // a bit bigger than 0.05; tune this
+	pos += normal * 0.001; // a bit bigger than 0.05; tune this
     hmary.setPosition(pos.x, pos.y, pos.z);
 }
 
