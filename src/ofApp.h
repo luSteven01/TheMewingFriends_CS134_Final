@@ -31,7 +31,6 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);
 		void drawAxis(ofVec3f);
 		void initLightingAndMaterials();
-		void toggleSelectTerrain();
 		bool mouseIntersectPlane(ofVec3f planePoint, ofVec3f planeNorm, ofVec3f &point);
 		bool raySelectWithOctree(ofVec3f &pointRet);
 		float rayFindAlt();
@@ -68,6 +67,7 @@ class ofApp : public ofBaseApp{
 		ofxAssimpModelLoader terrain, hmary;
 		bool bLanderLoaded;
 		bool bTerrainSelected;
+		ofVec3f terrainPoint;
 		ofTrueTypeFont guiFont;
 		ofImage background;
 
@@ -85,6 +85,7 @@ class ofApp : public ofBaseApp{
 
 		bool bLanderSelected = false;
 		bool bInDrag = false;
+		bool bLanderPaused = false;
 
 		//GUI
 		ofxPanel gui;
@@ -99,7 +100,6 @@ class ofApp : public ofBaseApp{
 		vector<Box> colBoxList;
 		vector<Box> bboxList;
 		bool pointSelected = false;
-		bool bDisplayLeafNodes = false;
 		bool bDisplayOctree = false;
 		float altPoint = 0;
 

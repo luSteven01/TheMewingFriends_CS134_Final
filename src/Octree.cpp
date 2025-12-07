@@ -234,13 +234,6 @@ void Octree::draw(TreeNode & node, int numLevels, int level) {
 	}
 }
 
-// Optional
-//
-void Octree::drawLeafNodes(TreeNode & node) {
-
-
-}
-
 
 
 

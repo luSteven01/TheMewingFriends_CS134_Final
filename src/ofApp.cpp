@@ -63,7 +63,7 @@ void ofApp::setup(){
 	qKeyDown = false;
 	eKeyDown = false;
 	bAltKeyDown = false;
-	bTerrainSelected = true;
+	bTerrainSelected = false;
 
 	maxFuel = 120.0;
 	remainingFuel = maxFuel;
@@ -82,6 +82,7 @@ void ofApp::setup(){
 	trackingCam = ofCamera();
 	thirdPerCam = ofCamera();
 	trackingCam.setPosition(-180, 80, 180);
+	cam.setPosition(-180, 80, 180);
 	theCam = &thirdPerCam;
 
 	// setup rudimentary lighting 
@@ -155,68 +156,66 @@ void ofApp::update() {
 		trackingCam.lookAt(landerPos);
 		onboardCam.setPosition(landerPos);
 		thirdPerCam.setPosition(landerPos - heading * 20 + glm::vec3(0, 10, 0));
-		//thirdPerCam.setPosition(landerPos + glm::vec3(10, 10, 0));
 		thirdPerCam.lookAt(landerPos);
 
 		//Lights
 		//keyLight.setPosition(landerPos);
-
-		//Rotation
-		if (qKeyDown) {
-			rotForce += 30;
-		}
-		if (eKeyDown) {
-			rotForce -= 30;
-		}
-		integrateRot();
-
-		// Time checker for fuel, to see how much time has passed since the last frame
-		float now = ofGetElapsedTimef();
-		float dt = now - lastTime;
-		lastTime = now;
-
-		bool hasThrust = false;
-		glm::vec3 exhaustDir(0, 0, 0);
-
-		bool canThrust = (remainingFuel > 0.0);
-
-		//Movement and thrust particles
-
-		if (canThrust) {
-			if (wKeyDown) {
-				force += heading * speed;
-				hasThrust = true;
-				exhaustDir += -heading;
+		if (!bLanderSelected || !bLanderPaused) {
+			//Rotation
+			if (qKeyDown) {
+				rotForce += 30;
 			}
-			if (sKeyDown) {
-				force += heading * -speed;
-				hasThrust = true;
-				exhaustDir += heading;
+			if (eKeyDown) {
+				rotForce -= 30;
 			}
-			if (dKeyDown) {
-				force += glm::vec3(-heading.z, 0, heading.x) * speed;
-				hasThrust = true;
-				glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
-				exhaustDir += -right;
-			}
-			if (aKeyDown) {
-				force += glm::vec3(heading.z, 0, -heading.x) * speed;
-				hasThrust = true;
-				glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
-				exhaustDir += right;
-			}
-			if (spaceKeyDown) {
-				force += glm::vec3(0, 1, 0) * (speed);
-				hasThrust = true;
-				glm::vec3 up = glm::vec3(0, 1, 0);
-				exhaustDir += -up;
-			}
-			if (shiftKeyDown) {
-				force += glm::vec3(0, 1, 0) * -speed;
-				hasThrust = true;
-			}
+			integrateRot();
 
-		}
+			// Time checker for fuel, to see how much time has passed since the last frame
+			float now = ofGetElapsedTimef();
+			float dt = now - lastTime;
+			lastTime = now;
+
+			bool hasThrust = false;
+			glm::vec3 exhaustDir(0, 0, 0);
+
+			bool canThrust = (remainingFuel > 0.0);
+
+			//Movement and thrust particles
+
+			if (canThrust) {
+				if (wKeyDown) {
+					force += heading * speed;
+					hasThrust = true;
+					exhaustDir += -heading;
+				}
+				if (sKeyDown) {
+					force += heading * -speed;
+					hasThrust = true;
+					exhaustDir += heading;
+				}
+				if (dKeyDown) {
+					force += glm::vec3(-heading.z, 0, heading.x) * speed;
+					hasThrust = true;
+					glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
+					exhaustDir += -right;
+				}
+				if (aKeyDown) {
+					force += glm::vec3(heading.z, 0, -heading.x) * speed;
+					hasThrust = true;
+					glm::vec3 right = glm::vec3(heading.z, 0, heading.x);
+					exhaustDir += right;
+				}
+				if (spaceKeyDown) {
+					force += glm::vec3(0, 1, 0) * (speed);
+					hasThrust = true;
+					glm::vec3 up = glm::vec3(0, 1, 0);
+					exhaustDir += -up;
+				}
+				if (shiftKeyDown) {
+					force += glm::vec3(0, 1, 0) * -speed;
+					hasThrust = true;
+				}
+			}
 			if (hasThrust && remainingFuel > 0.0) {
 				remainingFuel = remainingFuel - dt;
 				if (remainingFuel < 0.0) {
@@ -224,54 +223,50 @@ void ofApp::update() {
 				}
 			}
 
+			if (hasThrust && exhaustDir != glm::vec3(0, 0, 0)) {
+				exhaustDir = glm::normalize(exhaustDir);
 
-        if (hasThrust && exhaustDir != glm::vec3(0, 0, 0)) {
-            exhaustDir = glm::normalize(exhaustDir);
+				float exhaustSpeed = 20.0;
+				float exhaustOffset = 0.5;
 
-            float exhaustSpeed  = 20.0;
-            float exhaustOffset = 0.5;
+				ofVec3f emitterPos(landerPos.x, landerPos.y, landerPos.z);
+				ofVec3f offset(exhaustDir.x * exhaustOffset,
+					exhaustDir.y * exhaustOffset,
+					exhaustDir.z * exhaustOffset);
 
-            ofVec3f emitterPos(landerPos.x, landerPos.y, landerPos.z);
-            ofVec3f offset(exhaustDir.x * exhaustOffset,
-                           exhaustDir.y * exhaustOffset,
-                           exhaustDir.z * exhaustOffset);
+				exhaustEmitter.setPosition(emitterPos + offset);
 
-            exhaustEmitter.setPosition(emitterPos + offset);
+				exhaustEmitter.setVelocity(ofVec3f(exhaustDir.x * exhaustSpeed,
+					exhaustDir.y * exhaustSpeed,
+					exhaustDir.z * exhaustSpeed));
 
-            exhaustEmitter.setVelocity(ofVec3f(exhaustDir.x * exhaustSpeed,
-                                                exhaustDir.y * exhaustSpeed,
-                                                exhaustDir.z * exhaustSpeed));
+				exhaustEmitter.setRate(200.0);
+			} else {
+				exhaustEmitter.setRate(0.0);
+			}
 
-            exhaustEmitter.setRate(200.0);
-        } else {
-            exhaustEmitter.setRate(0.0);
-        }
+			if (bCrashed && !gameOver) {
+				explosionEmitter.start();
+				acceleration = glm::vec3(0, -1, 0);
+				velocity += glm::vec3(ofRandom(0.5, 1), ofRandom(0.5, 1), ofRandom(0.5, 1)) * 500;
+				gameOver = true;
+			}
 
-        exhaustEmitter.update();
+			ofVec3f min = hmary.getSceneMin() + hmary.getPosition();
+			ofVec3f max = hmary.getSceneMax() + hmary.getPosition();
+			Box bounds(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
 
-		if (bCrashed && !gameOver) {
-			explosionEmitter.start();
-			acceleration = glm::vec3(0, -1, 0);
-			velocity += glm::vec3(ofRandom(0.5, 1), ofRandom(0.5, 1), ofRandom(0.5, 1)) * 500;
-			gameOver = true;
+			colBoxList.clear();
+			octree.intersect(bounds, octree.root, colBoxList);
+
+			integrateMove();
+			if (!colBoxList.empty()) {
+				ofVec3f avgNormal = getAverageNormal();
+				resolveCollision(avgNormal);
+			}
 		}
+		exhaustEmitter.update();
 	}
-
-	integrateMove();
-	if (bLanderLoaded) {
-        ofVec3f min = hmary.getSceneMin() + hmary.getPosition();
-        ofVec3f max = hmary.getSceneMax() + hmary.getPosition();
-        Box bounds(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
-
-        colBoxList.clear();
-        octree.intersect(bounds, octree.root, colBoxList);
-
-        if (!colBoxList.empty()) {
-            ofVec3f avgNormal = getAverageNormal();
-            resolveCollision(avgNormal);
-        }
-    }
-
 }
 
 //--------------------------------------------------------------
@@ -299,10 +294,17 @@ void ofApp::draw() {
 	if (bLanderLoaded) {
 		hmary.drawFaces();
 
-		if (!bTerrainSelected) drawAxis(hmary.getPosition());
+		if (bTerrainSelected && (theCam == &cam)) {
+			terrainPoint = octree.mesh.getVertex(selectedNode.points[0]);
+			//cout << p.x << ", " << p.y << ", " << p.z << endl;
+			ofVec3f d = terrainPoint - cam.getPosition();
+			ofSetColor(ofColor::lightGreen);
+			ofDrawSphere(terrainPoint, .02 * d.length());
+			ofSetColor(ofColor::white);
+		}
 
 		//Draw lander selected bbounding box
-		if (bLanderSelected) {
+		if (bLanderSelected && (theCam == &cam)) {
 			ofVec3f min = hmary.getSceneMin() + hmary.getPosition();
 			ofVec3f max = hmary.getSceneMax() + hmary.getPosition();
 
@@ -315,17 +317,14 @@ void ofApp::draw() {
 			for (int i = 0; i < colBoxList.size(); i++) {
 				Octree::drawBox(colBoxList[i]);
 			}
+			ofSetColor(ofColor::white);
 		}
 	}
 
 	// recursively draw octree
 	ofDisableLighting();
 	int level = 0;
-	if (bDisplayLeafNodes) {
-		octree.drawLeafNodes(octree.root);
-		cout << "num leaf: " << octree.numLeaf << endl;
-    }
-	else if (bDisplayOctree) {
+	if (bDisplayOctree) {
 		ofNoFill();
 		ofSetColor(ofColor::white);
 		octree.draw(numLevels, 0);
@@ -386,19 +385,19 @@ void ofApp::drawAxis(ofVec3f location) {
 	ofSetLineWidth(1.0);
 
 	// X Axis
-	ofSetColor(ofColor(255, 0, 0));
-	ofDrawLine(ofPoint(0, 0, 0), ofPoint(1, 0, 0));
-	
+ofSetColor(ofColor(255, 0, 0));
+ofDrawLine(ofPoint(0, 0, 0), ofPoint(1, 0, 0));
 
-	// Y Axis
-	ofSetColor(ofColor(0, 255, 0));
-	ofDrawLine(ofPoint(0, 0, 0), ofPoint(0, 1, 0));
 
-	// Z Axis
-	ofSetColor(ofColor(0, 0, 255));
-	ofDrawLine(ofPoint(0, 0, 0), ofPoint(0, 0, 1));
+// Y Axis
+ofSetColor(ofColor(0, 255, 0));
+ofDrawLine(ofPoint(0, 0, 0), ofPoint(0, 1, 0));
 
-	ofPopMatrix();
+// Z Axis
+ofSetColor(ofColor(0, 0, 255));
+ofDrawLine(ofPoint(0, 0, 0), ofPoint(0, 0, 1));
+
+ofPopMatrix();
 }
 
 
@@ -467,11 +466,23 @@ void ofApp::keyPressed(int key) {
 		break;
 	case 'L':
 	case 'l':
-		bDisplayLeafNodes = !bDisplayLeafNodes;
+		if (theCam == &cam) {
+			theCam->lookAt(hmary.getPosition());
+		}
 		break;
 	case 'O':
 	case 'o':
 		bDisplayOctree = !bDisplayOctree;
+		break;
+	case 'P':
+	case 'p':
+		bLanderPaused = !bLanderPaused;
+		if (bLanderPaused) {
+			acceleration = glm::vec3(0, 0, 0);
+		}
+		else {
+			acceleration = glm::vec3(0, -50, 0);
+		}
 		break;
 	case 'R':
 	case 'r':
@@ -481,8 +492,15 @@ void ofApp::keyPressed(int key) {
 		break;
 	case 'u':
 		break;
-	case 'v':
-	case 'V':
+	case 'x':
+	case 'X':
+		if (theCam == &cam) {
+			if (bLanderSelected) {
+				theCam->lookAt(hmary.getPosition());
+			} else if (bTerrainSelected) {
+				theCam->lookAt(terrainPoint);
+			}
+		}
 		break;
 	case OF_KEY_ALT:
 		cam.enableMouseInput();
@@ -495,10 +513,6 @@ void ofApp::keyPressed(int key) {
 	default:
 		break;
 	}
-}
-
-void ofApp::toggleSelectTerrain() {
-	bTerrainSelected = !bTerrainSelected;
 }
 
 void ofApp::keyReleased(int key) {
@@ -547,8 +561,6 @@ void ofApp::keyReleased(int key) {
 	}
 }
 
-
-
 //--------------------------------------------------------------
 void ofApp::mouseMoved(int x, int y ){
 
@@ -560,15 +572,9 @@ void ofApp::mouseMoved(int x, int y ){
 void ofApp::mousePressed(int x, int y, int button) {
 
 	// if moving camera, don't allow mouse interaction
-	//
-	if (cam.getMouseInputEnabled()) return;
-
-	// if moving camera, don't allow mouse interaction
-//
 	if (cam.getMouseInputEnabled()) return;
 
 	// if rover is loaded, test for selection
-	//
 	if (bLanderLoaded) {
 		glm::vec3 origin = cam.getPosition();
 		glm::vec3 mouseWorld = cam.screenToWorld(glm::vec3(mouseX, mouseY, 0));
@@ -589,10 +595,6 @@ void ofApp::mousePressed(int x, int y, int button) {
 			bLanderSelected = false;
 		}
 	}
-	else {
-		ofVec3f p;
-		raySelectWithOctree(p);
-	}
 }
 
 bool ofApp::raySelectWithOctree(ofVec3f &pointRet) {
@@ -603,19 +605,18 @@ bool ofApp::raySelectWithOctree(ofVec3f &pointRet) {
 	Ray ray = Ray(Vector3(rayPoint.x, rayPoint.y, rayPoint.z),
 		Vector3(rayDir.x, rayDir.y, rayDir.z));
 
-	pointSelected = octree.intersect(ray, octree.root, selectedNode);
+	bTerrainSelected = octree.intersect(ray, octree.root, selectedNode);
 
-	if (pointSelected) {
+	if (bTerrainSelected) {
 		pointRet = octree.mesh.getVertex(selectedNode.points[0]);
 	}
-	return pointSelected;
+	return bTerrainSelected;
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button) {
-
+	//Note: this method is used to find the selected terrain point
 	// if moving camera, don't allow mouse interaction
-	//
 	if (cam.getMouseInputEnabled()) return;
 
 	if (bInDrag) {
