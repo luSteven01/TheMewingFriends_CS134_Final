@@ -16,7 +16,7 @@ void ofApp::setup(){
 	hmary.setScaleNormalization(false);
 	if (hmary.load("geo/lander.obj")) {
 		bLanderLoaded = true;
-		hmary.setPosition(-300, 470, -550);
+		hmary.setPosition(220, 150, 0);
 		cout << "lander loaded" << endl;
 	}
 	else {
@@ -25,16 +25,31 @@ void ofApp::setup(){
 	}
 
 	terrain.setScaleNormalization(false);
-	terrain.loadModel("geo/peak-terrain-test4.obj");
+	terrain.loadModel("geo/peak-terrain-test8.obj");
 
 	//Fonts and Art
-	guiFont.load("fonts/MouldyCheeseRegular.ttf", 25);
+	guiFont.load("fonts/RedemtionRegular.ttf", 35);
 
 	if (background.load("images/space.jpg")) {
 		cout << "Background loaded" << endl;
 	} else {
 		cout << "Can't open background image file" << endl;
 	}
+
+	//sounds
+	if (thrust.load("sounds/thrust.flac")) {
+		cout << "Thrust-sound loaded" << endl;
+	} else {
+		cout << "Can't load Thrust-sound" << endl;
+	}
+	thrust.setVolume(0.40);
+
+	if (explosion.load("sounds/explosion.wav")) {
+		cout << "Explosion-sound loaded" << endl;
+	} else {
+		cout << "Can't load Explosion-sound" << endl;
+	}
+	explosion.setVolume(0.02);
 
 	//Shaders
 	ofDisableArbTex();
@@ -65,7 +80,7 @@ void ofApp::setup(){
 	bAltKeyDown = false;
 	bTerrainSelected = false;
 
-	maxFuel = 12.0;
+	maxFuel = 120.0;
 	remainingFuel = maxFuel;
 	lastTime = ofGetElapsedTimef();
 
@@ -85,6 +100,7 @@ void ofApp::setup(){
 	trackingCam.setPosition(-180, 80, 180);
 	cam.setPosition(-180, 80, 180);
 	theCam = &thirdPerCam;
+	cameraName = "Cam-1 (3rd POV)";
 
 	// setup rudimentary lighting 
 	//initLightingAndMaterials();
@@ -102,6 +118,31 @@ void ofApp::setup(){
 	fillLight.setPosition(-180, 300, 180);
 	fillLight.enable();
 
+	//set up lading site lights
+	landSiteLightMid.setup();
+	landSiteLightMid.setPosition(-125, 500, 10);
+	landSiteLightMid.setAmbientColor(ofFloatColor(50, 250, 1000));
+	landSiteLightMid.setSpotlight();
+	landSiteLightMid.setSpotlightCutOff(10);
+	landSiteLightMid.setOrientation(glm::vec3(-90, 0, 0));
+	landSiteLightMid.enable();
+
+	landSiteLightRavine.setup();
+	landSiteLightRavine.setPosition(325, 200, 400);
+	landSiteLightRavine.setAmbientColor(ofFloatColor(50, 250, 1000));
+	landSiteLightRavine.setSpotlight();
+	landSiteLightRavine.setSpotlightCutOff(10);
+	landSiteLightRavine.setOrientation(glm::vec3(-90, 0, 0));
+	landSiteLightRavine.enable();
+
+	landSiteLightHill.setup();
+	landSiteLightHill.setPosition(700, 400, -600);
+	landSiteLightHill.setAmbientColor(ofFloatColor(50, 250, 1000));
+	landSiteLightHill.setSpotlight();
+	landSiteLightHill.setSpotlightCutOff(10);
+	landSiteLightHill.setOrientation(glm::vec3(-90, 0, 0));
+	landSiteLightHill.enable();
+
 	//  Create Octree for testing.
 	//
 	float t1 = ofGetElapsedTimeMicros();
@@ -115,9 +156,14 @@ void ofApp::setup(){
 	cout << "Time to Create Octree: " << (t2 - t1) / 1000 << " millisec" << endl;
 	cout << "Number of Verts: " << terrain.getMesh(0).getNumVertices() << endl;
 
+	//Set up landing zones
+	landingZoneMidBox = Box(Vector3(-230, -10, -111), Vector3(18, 60, 136));
+	landingZoneRavineBox = Box(Vector3(262, -170, 340), Vector3(374, -90, 452));
+	landingZoneHillBox = Box(Vector3(662, 140, -657), Vector3(740, 170, -560));
+
 	//Set up exhaust emitter
 	exhaustEmitter.setEmitterType(RadialEmitter);
-	exhaustEmitter.setLifespan(0.5);
+	exhaustEmitter.setLifespan(0.8);
 	exhaustEmitter.setParticleRadius(particleRadius);
 	exhaustEmitter.setRate(0);
 	exhaustEmitter.start();
@@ -185,8 +231,13 @@ void ofApp::update() {
 			float dt = now - lastTime;
 			lastTime = now;
 
-			bool hasThrust = false;
 			glm::vec3 exhaustDir(0, 0, 0);
+			if (!gameOver) {
+				hasThrust = false;
+			} else {
+				hasThrust = true;
+				exhaustDir += glm::vec3(0, 1, 0);
+			}
 
 			bool canThrust = (remainingFuel > 0.0);
 
@@ -233,7 +284,20 @@ void ofApp::update() {
 				}
 			}
 
+			//Check if the player has crashed
+			if (bCrashed && !gameOver && !win) {
+				explosionEmitter.start();
+				explosion.play();
+				keyLight.disable();
+				acceleration = glm::vec3(0, -1, 0);
+				hmary.setPosition(landerPos.x, landerPos.y + 5, landerPos.z);
+				velocity += glm::vec3(ofRandom(0.5, 1), ofRandom(1, 2), ofRandom(0.5, 1)) * 500;
+				theCam = &trackingCam;
+				gameOver = true;
+			}
+
 			if (hasThrust && exhaustDir != glm::vec3(0, 0, 0)) {
+				thrust.setLoop(true);
 				exhaustDir = glm::normalize(exhaustDir);
 
 				float exhaustSpeed = 20.0;
@@ -253,17 +317,7 @@ void ofApp::update() {
 				exhaustEmitter.setRate(200.0);
 			} else {
 				exhaustEmitter.setRate(0.0);
-			}
-
-			//Check if the player has crashed
-			if (bCrashed && !gameOver) {
-				explosionEmitter.start();
-				keyLight.disable();
-				acceleration = glm::vec3(0, -1, 0);
-				hmary.setPosition(landerPos.x, landerPos.y + 5, landerPos.z);
-				velocity += glm::vec3(ofRandom(0.5, 1), ofRandom(1, 2), ofRandom(0.5, 1)) * 500;
-				theCam = &trackingCam;
-				gameOver = true;
+				thrust.setLoop(false);
 			}
 
 			ofVec3f min = hmary.getSceneMin() + hmary.getPosition();
@@ -277,6 +331,7 @@ void ofApp::update() {
 			if (!colBoxList.empty()) {
 				ofVec3f avgNormal = getAverageNormal();
 				resolveCollision(avgNormal);
+				winCheck();
 			}
 		}
 		exhaustEmitter.update();
@@ -310,7 +365,7 @@ void ofApp::draw() {
 
 		if (bTerrainSelected && (theCam == &cam)) {
 			terrainPoint = octree.mesh.getVertex(selectedNode.points[0]);
-			//cout << p.x << ", " << p.y << ", " << p.z << endl;
+			cout << terrainPoint.x << ", " << terrainPoint.y << ", " << terrainPoint.z << endl;
 			ofVec3f d = terrainPoint - cam.getPosition();
 			ofSetColor(ofColor::lightGreen);
 			ofDrawSphere(terrainPoint, .02 * d.length());
@@ -344,6 +399,11 @@ void ofApp::draw() {
 		octree.draw(numLevels, 0);
 	}
 
+	ofSetColor(ofColor::white);
+	Octree::drawBox(landingZoneMidBox);
+	Octree::drawBox(landingZoneRavineBox);
+	Octree::drawBox(landingZoneHillBox);
+
 	ofPopMatrix();
 	theCam->end();
 
@@ -373,17 +433,27 @@ void ofApp::draw() {
 	if (!bHide) {
 		gui.draw();
 		if (bLanderLoaded) {
-			guiFont.drawString("Altitude: " + ofToString(rayFindAlt()), (ofGetWidth() / 2) - 150, 120);
+			guiFont.drawString("Altitude: " + ofToString(rayFindAlt()), (ofGetWidth() / 2) - 180, 120);
 		}
-	}
 
-	if (remainingFuel > 0) {
-		guiFont.drawString("Fuel Remaining:" + ofToString(remainingFuel, 1), (ofGetWidth() / 2) - 150, 160);
-	}
+		if (remainingFuel > 0) {
+			guiFont.drawString("Fuel Remaining: " + ofToString(remainingFuel, 1), (ofGetWidth() / 2) - 240, 180);
+		}
 
-	if (remainingFuel <= 0) {
-		guiFont.drawString("OUT OF FUEL", (ofGetWidth() / 2) - 150, 160);
-		bCrashed = true;
+		if (remainingFuel <= 0) {
+			guiFont.drawString("OUT OF FUEL", (ofGetWidth() / 2) - 150, 160);
+			bCrashed = true;
+		}
+
+		if (gameOver) {
+			guiFont.drawString("CRASHED", (ofGetWidth() / 2) - 100, (ofGetHeight() / 2) - 80);
+		}
+
+		if (win) {
+			guiFont.drawString("Landed", (ofGetWidth() / 2) - 100, (ofGetHeight() / 2) - 80);
+		}
+
+		guiFont.drawString(cameraName, 10, ofGetHeight() - 10);
 	}
 	ofEnableDepthTest();
 }
@@ -420,45 +490,73 @@ void ofApp::keyPressed(int key) {
 	switch (key) {
 	case 'W':
 	case 'w':
-		if (!gameOver) wKeyDown = true;
+		if (!gameOver && !wKeyDown) {
+			wKeyDown = true;
+			//thrust.setLoop(true);
+			thrust.play();
+		}
 		break;
 	case 'A':
 	case 'a':
-		if (!gameOver) aKeyDown = true;
+		if (!gameOver && !aKeyDown) {
+			aKeyDown = true;
+			//thrust.setLoop(true);
+			thrust.play();
+		}
 		break;
 	case 'S':
 	case 's':
-		if (!gameOver) sKeyDown = true;
+		if (!gameOver && !sKeyDown) {
+			sKeyDown = true;
+			//thrust.setLoop(true);
+			thrust.play();
+		}
 		break;
 	case 'D':
 	case 'd':
-		if (!gameOver) dKeyDown = true;
+		if (!gameOver && !dKeyDown) {
+			dKeyDown = true;
+			//thrust.setLoop(true);
+			thrust.play();
+		}
 		break;
 	case ' ':
-		if (!gameOver) spaceKeyDown = true;
+		if (!gameOver && !spaceKeyDown) {
+			spaceKeyDown = true;
+			//thrust.setLoop(true);
+			thrust.play();
+		}
 		break;
 	case OF_KEY_SHIFT:
-		if (!gameOver) shiftKeyDown = true;
+		if (!gameOver && !shiftKeyDown) {
+			shiftKeyDown = true;
+			//thrust.setLoop(true);
+			thrust.play();
+		}
 		break;
 	case 'Q':
 	case 'q':
-		if (!gameOver) qKeyDown = true;
+		if (!gameOver && !qKeyDown) qKeyDown = true;
 		break;
 	case 'E':
 	case 'e':
-		if (!gameOver) eKeyDown = true;
+		if (!gameOver && !eKeyDown) eKeyDown = true;
 		break;
 	case '1':
 		theCam = &thirdPerCam;
+		cameraName = "Cam-1 (ThirdPOV)";
 		break;
 	case '2':
 		theCam = &onboardCam;
+		cameraName = "Cam-2 (Onboard)";
 		break;
 	case '3':
 		theCam = &trackingCam;
+		cameraName = "Cam-3 (Tracking)";
 		break;
 	case '4':
 		theCam = &cam;
+		cameraName = "Cam-1 (Free)";
 		break;
 	case 'B':
 	case 'b':
@@ -539,24 +637,30 @@ void ofApp::keyReleased(int key) {
 		break;
 	case 'W':
 	case 'w':
+		//if (!hasThrust) thrust.setLoop(false);
 		wKeyDown = false;
 		break;
 	case 'A':
 	case 'a':
+		//if (!hasThrust) thrust.setLoop(false);
 		aKeyDown = false;
 		break;
 	case 'S':
 	case 's':
+		//if (!hasThrust) thrust.setLoop(false);
 		sKeyDown = false;
 		break;
 	case 'D':
 	case 'd':
+		//if (!hasThrust) thrust.setLoop(false);
 		dKeyDown = false;
 		break;
 	case ' ':
+		//if (!hasThrust) thrust.setLoop(false);
 		spaceKeyDown = false;
 		break;
 	case OF_KEY_SHIFT:
+		//if (!hasThrust) thrust.setLoop(false);
 		shiftKeyDown = false;
 		break;
 	case 'E':
@@ -844,6 +948,10 @@ void ofApp::integrateMove() {
 		glm::vec3 accel = acceleration;
 
 		if (force != glm::vec3(0, 0, 0)) {
+			//add some turbulence
+			force.x += ofRandom(0, 10);
+			force.y += ofRandom(0, 10);
+			force.z += ofRandom(0, 10);
 			accel += (1.0 / mass * force);
 		}
 		velocity += accel * dt;
@@ -933,10 +1041,10 @@ ofVec3f ofApp::getAverageNormal() {
 }
 
 void ofApp::resolveCollision(glm::vec3 normal) {
-    if (!bLanderLoaded) return;
+	if (!bLanderLoaded) return;
 
-    float vAlongNormal = glm::dot(velocity, normal);     // velocity along normal
-    glm::vec3 scaledVAlongNormal = vAlongNormal * normal;
+	float vAlongNormal = glm::dot(velocity, normal); // velocity along normal
+	glm::vec3 scaledVAlongNormal = vAlongNormal * normal;
 	glm::vec3 originalMomentum = velocity - scaledVAlongNormal;
 
 	if (vAlongNormal < 0) {
@@ -947,15 +1055,14 @@ void ofApp::resolveCollision(glm::vec3 normal) {
 		cout << "Crashed" << endl;
 	}
 
-    float restitution = 0.8;
+	float restitution = 0.8;
 	scaledVAlongNormal *= -restitution;
 
-    velocity = scaledVAlongNormal + originalMomentum;
+	velocity = scaledVAlongNormal + originalMomentum;
 
-
-    glm::vec3 pos = hmary.getPosition();
+	glm::vec3 pos = hmary.getPosition();
 	pos += normal * 0.035;
-    hmary.setPosition(pos.x, pos.y, pos.z);
+	hmary.setPosition(pos.x, pos.y, pos.z);
 }
 
 void ofApp::loadExhaustVbo() {
@@ -990,6 +1097,18 @@ void ofApp::loadExplosionVbo() {
 	explosionVbo.clear();
 	explosionVbo.setVertexData(&points[0], total, GL_STATIC_DRAW);
 	explosionVbo.setNormalData(&sizes[0], total, GL_STATIC_DRAW);
+}
+
+void ofApp::winCheck() {
+	if (!gameOver && !win) {
+		cout << "Check" << endl;
+		for (Box & box : colBoxList) {
+			if (box.overlap(landingZoneMidBox) || box.overlap(landingZoneRavineBox) || box.overlap(landingZoneHillBox)) {
+				cout << "Win cond met" << endl;
+				win = true;
+			}
+		}
+	}
 }
 
 

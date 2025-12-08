@@ -39,10 +39,12 @@ class ofApp : public ofBaseApp{
     	void resolveCollision(glm::vec3 normal);
 		void loadExhaustVbo();
 		void loadExplosionVbo();
+		void winCheck();
 	
 		//Integrated movement
 		void integrateMove();
 		void integrateRot();
+		float gravity = -9;
 		glm::vec3 velocity = glm::vec3(0,0,0);
 		glm::vec3 acceleration = glm::vec3(0, -50, 0);
 		glm::vec3 force = glm::vec3(0, 0, 0);
@@ -58,9 +60,10 @@ class ofApp : public ofBaseApp{
 		ofEasyCam cam;
 		ofCamera * theCam = NULL;
 		ofCamera onboardCam, trackingCam, thirdPerCam;
+		string cameraName;
 
 		//lights
-		ofLight keyLight, fillLight;
+		ofLight keyLight, fillLight, landSiteLightMid, landSiteLightRavine, landSiteLightHill;
 		ofLight light; //Starter code. Maybe remove later
 
 		//art assets
@@ -70,6 +73,15 @@ class ofApp : public ofBaseApp{
 		ofVec3f terrainPoint;
 		ofTrueTypeFont guiFont;
 		ofImage background;
+
+		//Landing Zone Boxes
+		Box landingZoneMidBox;
+		Box landingZoneRavineBox;
+		Box landingZoneHillBox;
+
+		//sounds
+		ofSoundPlayer thrust;
+		ofSoundPlayer explosion;
 
 		//controls
 		bool wKeyDown;
@@ -92,6 +104,7 @@ class ofApp : public ofBaseApp{
 		ofxIntSlider numLevels;
 		bool bHide;
 		bool gameOver = false;
+		bool win = false;
 
 		//Spatial Subdivision
 		Octree octree;
@@ -130,11 +143,11 @@ class ofApp : public ofBaseApp{
 		vector<int> terrainFaces;        // all face indices in the terrain mesh
     	vector<int> collidingFaces; 
 
-		//float maxFuel = 120;
-		float maxFuel = 12;
+		float maxFuel = 120;
 		float remainingFuel;
 		bool hasFuel;
 		float lastTime;
+		bool hasThrust;
 
 		float altitude;
 };
