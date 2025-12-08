@@ -14,9 +14,10 @@
 void ofApp::setup(){
 	//Set up models
 	hmary.setScaleNormalization(false);
-	if (hmary.load("geo/lander.obj")) {
+	if (hmary.load("geo/SeamothRotated2.obj")) {
 		bLanderLoaded = true;
 		hmary.setPosition(220, 150, 0);
+		hmary.setScale(3, 3, 3);
 		cout << "lander loaded" << endl;
 	}
 	else {
@@ -25,7 +26,7 @@ void ofApp::setup(){
 	}
 
 	terrain.setScaleNormalization(false);
-	terrain.loadModel("geo/peak-terrain-test8.obj");
+	terrain.loadModel("geo/peak-terrain-test9.obj");
 
 	//Fonts and Art
 	guiFont.load("fonts/RedemtionRegular.ttf", 35);
@@ -204,7 +205,8 @@ void ofApp::update() {
 
 		//Cameras
 		trackingCam.lookAt(landerPos);
-		thirdPerCam.setPosition(landerPos - heading * 20 + glm::vec3(0, 10, 0));
+		//thirdPerCam.setPosition(landerPos - heading * 20 + glm::vec3(0, 10, 0));
+		thirdPerCam.setPosition(landerPos - heading * 40 + glm::vec3(0, 10, 0));
 		thirdPerCam.lookAt(landerPos);
 		onboardCam.setPosition(landerPos + glm ::vec3(0, 7, 0));
 		if (altitude < 60) {
@@ -304,11 +306,14 @@ void ofApp::update() {
 				float exhaustOffset = 0.5;
 
 				ofVec3f emitterPos(landerPos.x, landerPos.y, landerPos.z);
-				ofVec3f offset(exhaustDir.x * exhaustOffset,
-					exhaustDir.y * exhaustOffset,
-					exhaustDir.z * exhaustOffset);
+				//ofVec3f offset(exhaustDir.x * exhaustOffset,
+				//	exhaustDir.y * exhaustOffset,
+				//	exhaustDir.z * exhaustOffset);
 
-				exhaustEmitter.setPosition(emitterPos + offset);
+				//exhaustEmitter.setPosition(emitterPos + offset);
+
+				exhaustEmitter.setPosition(glm::vec3(landerPos.x, landerPos.y + 6, landerPos.z + 10));
+				exhaustEmitter.setPosition(landerPos - heading * 8 + glm::vec3(0, 5, 0));
 
 				exhaustEmitter.setVelocity(ofVec3f(exhaustDir.x * exhaustSpeed,
 					exhaustDir.y * exhaustSpeed,
@@ -492,7 +497,6 @@ void ofApp::keyPressed(int key) {
 	case 'w':
 		if (!gameOver && !wKeyDown) {
 			wKeyDown = true;
-			//thrust.setLoop(true);
 			thrust.play();
 		}
 		break;
@@ -500,7 +504,6 @@ void ofApp::keyPressed(int key) {
 	case 'a':
 		if (!gameOver && !aKeyDown) {
 			aKeyDown = true;
-			//thrust.setLoop(true);
 			thrust.play();
 		}
 		break;
@@ -508,7 +511,6 @@ void ofApp::keyPressed(int key) {
 	case 's':
 		if (!gameOver && !sKeyDown) {
 			sKeyDown = true;
-			//thrust.setLoop(true);
 			thrust.play();
 		}
 		break;
@@ -516,21 +518,18 @@ void ofApp::keyPressed(int key) {
 	case 'd':
 		if (!gameOver && !dKeyDown) {
 			dKeyDown = true;
-			//thrust.setLoop(true);
 			thrust.play();
 		}
 		break;
 	case ' ':
 		if (!gameOver && !spaceKeyDown) {
 			spaceKeyDown = true;
-			//thrust.setLoop(true);
 			thrust.play();
 		}
 		break;
 	case OF_KEY_SHIFT:
 		if (!gameOver && !shiftKeyDown) {
 			shiftKeyDown = true;
-			//thrust.setLoop(true);
 			thrust.play();
 		}
 		break;
@@ -579,6 +578,10 @@ void ofApp::keyPressed(int key) {
 		if (theCam == &cam) {
 			theCam->lookAt(hmary.getPosition());
 		}
+		break;
+	case 'N':
+	case 'n':
+		reset();
 		break;
 	case 'O':
 	case 'o':
@@ -1044,13 +1047,16 @@ void ofApp::resolveCollision(glm::vec3 normal) {
 	if (!bLanderLoaded) return;
 
 	float vAlongNormal = glm::dot(velocity, normal); // velocity along normal
+
+	if (vAlongNormal >= 0.0f) {
+		return;
+	}
+
 	glm::vec3 scaledVAlongNormal = vAlongNormal * normal;
 	glm::vec3 originalMomentum = velocity - scaledVAlongNormal;
 
-	if (vAlongNormal < 0) {
-		vAlongNormal *= -1;
-	}
-	if ((vAlongNormal > crashSpeed) && !bCrashed) {
+	float impactSpeed = -vAlongNormal;
+    if (impactSpeed > crashSpeed && !bCrashed) {
 		bCrashed = true;
 		cout << "Crashed" << endl;
 	}
@@ -1109,6 +1115,25 @@ void ofApp::winCheck() {
 			}
 		}
 	}
+}
+
+void ofApp::reset() {
+	velocity = glm::vec3(0, 0, 0);
+	acceleration = glm::vec3(0, -50, 0);
+	rotation = 0;
+	rotVel = 0;
+	rotAcc = 0;
+	rotForce = 0;
+	hmary.setPosition(220, 150, 0);
+	win = false;
+	gameOver = false;
+	bCrashed = false;
+	keyLight.enable();
+	explosionEmitter.sys->particles.clear();
+	colBoxList.clear();
+	theCam = &thirdPerCam;
+	remainingFuel = maxFuel;
+	lastTime = ofGetElapsedTimef();
 }
 
 

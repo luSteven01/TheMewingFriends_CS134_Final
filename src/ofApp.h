@@ -40,6 +40,7 @@ class ofApp : public ofBaseApp{
 		void loadExhaustVbo();
 		void loadExplosionVbo();
 		void winCheck();
+		void reset();
 	
 		//Integrated movement
 		void integrateMove();
